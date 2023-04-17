@@ -36,7 +36,6 @@ fun main(args: Array<String>) {
         else -> {
             printHelpAndExit()
         }
-
     }
 }
 
@@ -53,9 +52,7 @@ fun printDirectories() {
         it.lines()
             .filter { !it.startsWith(comment) }
             .sorted()
-            .forEach{
-            println("$it")
-        }
+            .forEach{ println("$it") }
     }
 }
 
@@ -119,7 +116,7 @@ fun getStoreFileTemplate(): File {
 fun printInstall() {
     val msg = """
         # Shortcuts for $appName utilities:
-        cdf() { k="${'$'}1" && cd "${'$'}($appName r ${'$'}k)"; }
+        cdf() { b="${'$'}1" && cd "${'$'}($appName r ${'$'}b)"; }
         sdf() { $appName w "${'$'}1" "${'$'}PWD"; }
         ldf() { $appName l; }
     """.trimIndent()
