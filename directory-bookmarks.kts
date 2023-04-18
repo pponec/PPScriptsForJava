@@ -7,7 +7,7 @@ import kotlin.system.exitProcess
 
 val homePage = "https://github.com/pponec/DirectoryBookmarks"
 val appName = "directory-bookmarks.kts"
-val appVersion = "1.1"
+val appVersion = "1.2"
 val storeName = ".directory-bookmarks.csv"
 val separator = '\t'
 val comment = '#'
@@ -31,6 +31,10 @@ fun main(args: Array<String>) {
             val msg = args.sliceArray(3 until args.size)
             save(args[1], args[2], *msg)
         }
+        "d" -> {
+            if (args.size < 1) printHelpAndExit()
+            delete(args[1])
+        }
         "l" -> printDirectories()
         "i" -> printInstall()
         else -> printHelpAndExit()
@@ -41,7 +45,7 @@ fun printHelpAndExit() {
     var bashrc = "~/.bashrc"
     println("Script '$appName' v$appVersion ($homePage)")
     println("Usage version: $appName [rwl] bookmark directory optionalComment")
-    println("Integrate it to Linux Ubuntu: $appName i >> $bashrc && . $bashrc")
+    println("Integrate the script to Ubuntu: $appName i >> $bashrc && . $bashrc")
     exitProcess(1)
 }
 
@@ -78,6 +82,10 @@ fun getDirectory(key: String, defaultDir: String) : String {
     }
 }
 
+fun delete(key: String) =
+    save (key, "")
+
+/** Empty dir removes the bookmark */
 fun save(key: String, dir: String, vararg comments: String) {
     require(!key.contains(separator), { "the key contains a tab" })
     val extendedKey = key + separator
@@ -86,12 +94,14 @@ fun save(key: String, dir: String, vararg comments: String) {
     tempFile.bufferedWriter().use { writer ->
         writer.write(header)
         writer.write(newLine)
-        writer.write("$key$separator$dir")
-        if (!comments.isEmpty()) {
-            writer.write("$separator#")
-            comments.forEach { writer.append(" $it") }
+        if (dir.isNotEmpty()) {
+            writer.write("$key$separator$dir")
+            if (!comments.isEmpty()) {
+                writer.write("$separator$comment")
+                comments.forEach { writer.append(" $it") }
+            }
+            writer.write(newLine)
         }
-        writer.write(newLine)
         storeFile.bufferedReader().use {
             it.lines()
                 .filter { !it.startsWith(comment) }
