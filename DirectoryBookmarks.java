@@ -1,14 +1,11 @@
-// package net.ponec.kotlin.utils.script1;
+// package net.ponec.java.utils.script;
 // Java script converted from Kotlin by the GPTChat
+// Running by Java 11: $ java DirectoryBookmarks.java
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import javax.tools.ToolProvider;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Optional;
@@ -16,72 +13,78 @@ import java.util.regex.Pattern;
 
 public class DirectoryBookmarks {
 
-    private static final String homePage = "https://github.com/pponec/DirectoryBookmarks";
-    private static final String appName = "directory-bookmarks.kts";
-    private static final String appVersion = "1.3";
-    private static final String storeName = ".directory-bookmarks.csv";
-    private static final char separator = '\t';
-    private static final char comment = '#';
-    private static final String newLine = System.lineSeparator();
-    private static final String header = comment + " A directory bookmarks for the '" + appName + "' script";
-    private static final String homeDir = System.getProperty("user.home");
+    private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
+    private final String appName = getClass().getName();
+    private final String appVersion = "1.4";
+    private final String storeName = ".directory-bookmarks.csv";
+    private final char separator = '\t';
+    private final char comment = '#';
+    private final String newLine = System.lineSeparator();
+    private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
+    private final String homeDir = System.getProperty("user.home");
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        final var o = new DirectoryBookmarks();
         if (args.length == 0)
-            printHelpAndExit();
+            o.printHelpAndExit();
         switch (args[0]) {
             case "r":
                 if (args.length < 2)
-                    printHelpAndExit();
-                String dir = getDirectory(args[1], " " + args[1] + " [bookmark] ");
+                    o.printHelpAndExit();
+                String dir = o.getDirectory(args[1], " " + args[1] + " [bookmark] ");
                 System.out.println(dir);
                 break;
             case "w":
                 if (args.length < 3)
-                    printHelpAndExit();
+                    o.printHelpAndExit();
                 String[] msg = Arrays.copyOfRange(args, 3, args.length);
-                save(args[1], args[2], msg);
+                o.save(args[1], args[2], msg);
                 break;
             case "d":
-                if (args.length < 1)
-                    printHelpAndExit();
-                delete(args[1]);
+                if (args.length < 2)
+                    o.printHelpAndExit();
+                o.delete(args[1]);
                 break;
             case "l":
-                printDirectories();
+                if (args.length > 1 && !args[1].isEmpty()) {
+                    System.out.println(o.getDirectory(args[1], ""));
+                } else {
+                    o.printDirectories();
+                }
                 break;
             case "i":
-                printInstall(false);
+                o.printInstall(false);
                 break;
             case "i4j":
-                printInstall(true);
+                o.printInstall(true);
+                break;
+            case "c":
+                o.compile();
                 break;
             default:
-                printHelpAndExit();
+                o.printHelpAndExit();
         }
     }
 
-    private static void printHelpAndExit() {
+    private void printHelpAndExit() {
         String bashrc = "~/.bashrc";
         System.out.println("Script '" + appName + "' v" + appVersion + " (" + homePage + ")");
-        System.out.println("Usage version: " + appName + " [rwl] bookmark directory optionalComment");
+        System.out.println("Usage: " + appName + " [rwlc] bookmark directory optionalComment");
         System.out.println("Integrate the script to Ubuntu: " + appName + " i >> " + bashrc + " && . " + bashrc);
         System.exit(1);
     }
 
-    private static void printDirectories() {
+    private void printDirectories() throws IOException {
         File storeFile = getStoreFile();
         try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
                     .forEach(System.out::println);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
-    private static String getDirectory(String key, String defaultDir) {
+    private String getDirectory(String key, String defaultDir) throws IOException {
         switch (key) {
             case "~":
                 return homeDir;
@@ -106,18 +109,16 @@ public class DirectoryBookmarks {
                             return dirString;
                         }
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
                 return defaultDir;
         }
     }
 
-    private static void delete(String key) {
+    private void delete(String key) throws IOException {
         save(key, "");
     }
 
-    private static void save(String dir, String key, String... comments) {
+    private void save(String dir, String key, String... comments) throws IOException {
         if (key.contains(String.valueOf(separator))) {
             throw new IllegalArgumentException("the key contains a tab");
         }
@@ -150,17 +151,11 @@ public class DirectoryBookmarks {
                             }
                         });
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
-        try {
-            Files.move(tempFile.toPath(), storeFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Files.move(tempFile.toPath(), storeFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
-    private static File getStoreFile() {
+    private File getStoreFile() {
         File result = new File(homeDir, storeName);
         if (!result.isFile()) {
             try {
@@ -172,25 +167,45 @@ public class DirectoryBookmarks {
         return result;
     }
 
-    private static File getStoreFileTemplate() {
-        try {
-            return File.createTempFile("storeName", "", new File(homeDir));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+    private File getStoreFileTemplate() throws IOException {
+        return File.createTempFile("storeName", "", new File(homeDir));
     }
 
-    private static void printInstall(boolean forJava) {
-        String exec = forJava ?
-                "java ~/bin/DirectoryBookmarks.java" :
-                appName;
-        String msg = ""
-                + "# Shortcuts for " + appName + " utilities:\n"
-                + "alias directoryBookmarksExe='" + exec + "'\n"
-                + "cdf() { cd \"$(directoryBookmarksExe r \"$1\")\"; }\n"
-                + "sdf() { directoryBookmarksExe w \"$PWD\" \"$@\"; }\n"
-                + "ldf() { directoryBookmarksExe l; }\n";
+    /** Compile the script and build it to the executable JAR file */
+    private void compile() throws Exception {
+        var classFile = new File(appName + ".class");
+        classFile.deleteOnExit();
+
+        var compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IllegalStateException("No Java Compiler is available");
+        }
+        var error = new ByteArrayOutputStream();
+        var result = compiler.run(null, null, new PrintStream(error), appName  + ".java");
+        if (result != 0) {
+            throw new IllegalStateException(error.toString());
+        }
+
+        // Build a JAR file:
+        String[] arguments = {"jar", "cfe", appName + ".jar", appName, classFile.getName()};
+        var process = new ProcessBuilder(arguments).start();
+        var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+        var exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IllegalStateException(err);
+        }
+    }
+
+    private void printInstall(boolean forJar) {
+        String exec = forJar
+                ? String.format("java -jar ~/bin/%s.jar", appName)
+                : String.format("java ~/bin/%s.java", appName);
+        String msg = String.join("\n", ""
+                , "# Shortcuts for " + appName + " utilities:"
+                , "alias directoryBookmarksExe='" + exec + "'"
+                , "cdf() { cd \"$(directoryBookmarksExe r \"$1\")\"; }"
+                , "sdf() { directoryBookmarksExe w \"$PWD\" \"$@\"; }"
+                , "ldf() { directoryBookmarksExe l \"$1\"; }");
         System.out.println(msg);
     }
 }
