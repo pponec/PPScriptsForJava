@@ -23,35 +23,32 @@ public class DirectoryBookmarks {
     private final String newLine = System.lineSeparator();
     private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
     private final String homeDir = System.getProperty("user.home");
+    private final String currentDir = System.getProperty("user.dir");
+    private final String currentMark = ":CURRENT";
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
         if (args.length == 0)
             o.printHelpAndExit();
         switch (args[0]) {
-            case "r":
-                if (args.length < 2)
-                    o.printHelpAndExit();
-                String dir = o.getDirectory(args[1], " " + args[1] + " [bookmark] ");
-                System.out.println(dir);
+            case "r": // read directory
+                if (args.length > 1 && !args[1].isEmpty()) {
+                    var dir = o.getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
+                    System.out.println(dir);
+                } else {
+                    o.printDirectories();
+                }
                 break;
-            case "w":
+            case "s":
                 if (args.length < 3)
                     o.printHelpAndExit();
-                String[] msg = Arrays.copyOfRange(args, 3, args.length);
+                var msg = Arrays.copyOfRange(args, 3, args.length);
                 o.save(args[2], args[1], msg);
                 break;
             case "d":
                 if (args.length < 2)
                     o.printHelpAndExit();
                 o.delete(args[1]);
-                break;
-            case "l":
-                if (args.length > 1 && !args[1].isEmpty()) {
-                    System.out.println(o.getDirectory(args[1], ""));
-                } else {
-                    o.printDirectories();
-                }
                 break;
             case "i":
                 o.printInstall(false);
@@ -73,7 +70,7 @@ public class DirectoryBookmarks {
     private void printHelpAndExit() {
         String bashrc = "~/.bashrc";
         System.out.println("Script '" + appName + "' v" + appVersion + " (" + homePage + ")");
-        System.out.println("Usage: java " + appName + ".java [rwldec] bookmark directory optionalComment");
+        System.out.println("Usage: java " + appName + ".java [rsdec] bookmark directory optionalComment");
         System.out.println("Integrate the script to Ubuntu: java " + appName + ".java i >> " + bashrc + " && . " + bashrc);
         System.exit(1);
     }
@@ -94,6 +91,8 @@ public class DirectoryBookmarks {
                 return homeDir;
             case ".":
                 return key;
+            case currentMark:
+                return currentDir;
             default:
                 String extendedKey = key + separator;
                 File storeFile = getStoreFile();
@@ -125,6 +124,9 @@ public class DirectoryBookmarks {
     private void save(String key, String dir, String... comments) throws IOException {
         if (key.contains(String.valueOf(separator))) {
             throw new IllegalArgumentException("the key contains a tab");
+        }
+        if (currentMark.equals(dir)) {
+            dir = currentDir;
         }
         String extendedKey = key + separator;
         File tempFile = getStoreFileTemplate();
@@ -230,14 +232,14 @@ public class DirectoryBookmarks {
 
     private void printInstall(boolean forJar) {
         String exec = forJar
-                ? String.format("java -jar ~/bin/%s.jar", appName)
-                : String.format("java ~/bin/%s.java", appName);
+                ? "java -jar ~/bin/%s.jar".formatted(appName)
+                : "java ~/bin/%s.java".formatted(appName);
         String msg = String.join("\n", ""
-                , "# Shortcuts for " + appName + " utilities:"
-                , "alias directoryBookmarksExe='" + exec + "'"
+                , "# Shortcuts for %s utilities:".formatted(appName)
+                , "alias directoryBookmarksExe='%s'".formatted(exec)
                 , "cdf() { cd \"$(directoryBookmarksExe r \"$1\")\"; }"
-                , "sdf() { directoryBookmarksExe w \"$PWD\" \"$@\"; }"
-                , "ldf() { directoryBookmarksExe l \"$1\"; }");
+                , "sdf() { directoryBookmarksExe s \"%s\" \"$@\"; }".formatted(currentMark)
+                , "ldf() { directoryBookmarksExe r \"$1\"; }");
         System.out.println(msg);
     }
 }
