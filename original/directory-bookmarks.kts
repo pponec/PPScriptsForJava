@@ -1,5 +1,5 @@
 #!/usr/bin/env kscript
-package net.ponec.kotlin.utils.script1
+package net.ponec.kotlin.utils.script1.original
 
 import java.io.File
 import java.util.regex.Pattern
@@ -14,7 +14,7 @@ import kotlin.system.exitProcess
 object MainSingleton {
 
     private val homePage = "https://github.com/pponec/DirectoryBookmarks"
-    private val appName = "directory-bookmarks.kts"
+    private val appName = "original/directory-bookmarks.kts"
     private val appVersion = "1.3"
     private val storeName = ".directory-bookmarks.csv"
     private val separator = '\t'
