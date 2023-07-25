@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -16,7 +17,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.5";
+    private final String appVersion = "1.6";
     private final String storeName = ".directory-bookmarks.csv";
     private final char separator = '\t';
     private final char comment = '#';
@@ -24,7 +25,7 @@ public class DirectoryBookmarks {
     private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
-    private final String currentMark = ":CURRENT";
+    private final String currentMark = "CURRENT:DIR";
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -51,10 +52,7 @@ public class DirectoryBookmarks {
                 o.delete(args[1]);
                 break;
             case "i":
-                o.printInstall(false);
-                break;
-            case "i4j":
-                o.printInstall(true);
+                o.printInstall();
                 break;
             case "e":
                 o.removeAllDeprecatedDiredtories();
@@ -182,6 +180,7 @@ public class DirectoryBookmarks {
         try (BufferedReader reader = new BufferedReader(new FileReader(getStoreFile()))) {
             keys = reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
+                    .sorted()
                     .map(line -> line.substring(0, line.indexOf(separator)))
                     .toList();
         }
@@ -221,7 +220,8 @@ public class DirectoryBookmarks {
         }
 
         // Build a JAR file:
-        String[] arguments = {"jar", "cfe", appName + ".jar", appName, classFile.getName()};
+        var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
+        String[] arguments = {jarExe, "cfe", appName + ".jar", appName, classFile.getName()};
         var process = new ProcessBuilder(arguments).start();
         var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
         var exitCode = process.waitFor();
@@ -230,16 +230,27 @@ public class DirectoryBookmarks {
         }
     }
 
-    private void printInstall(boolean forJar) {
-        String exec = forJar
-                ? "java -jar ~/bin/%s.jar".formatted(appName)
-                : "java ~/bin/%s.java".formatted(appName);
-        String msg = String.join("\n", ""
-                , "# Shortcuts for %s utilities:".formatted(appName)
-                , "alias directoryBookmarksExe='%s'".formatted(exec)
-                , "cdf() { cd \"$(directoryBookmarksExe r \"$1\")\"; }"
-                , "sdf() { directoryBookmarksExe s \"%s\" \"$@\"; }".formatted(currentMark)
-                , "ldf() { directoryBookmarksExe r \"$1\"; }");
+    private void printInstall() {
+        var applPath = getPathOfRunningApplication();
+        var forJar = applPath.toLowerCase(Locale.ENGLISH).endsWith(".jar");
+        var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
+        var applExe = forJar
+                ? "%s -jar %s".formatted(javaExe, applPath)
+                : "%s %s".formatted(javaExe, applPath);
+        var msg = String.join("\n", ""
+                , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
+                , "alias directoryBookmarks='%s'".formatted(applExe)
+                , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
+                , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentMark)
+                , "ldf() { directoryBookmarks r \"$1\"; }");
         System.out.println(msg);
+    }
+
+    private String getPathOfRunningApplication() {
+        try {
+            return getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+        } catch (Exception e) {
+            return "$s.$s".formatted(getClass().getSimpleName(), "java");
+        }
     }
 }
