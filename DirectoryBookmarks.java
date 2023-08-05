@@ -17,7 +17,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.6";
+    private final String appVersion = "1.6.1";
     private final String storeName = ".directory-bookmarks.csv";
     private final char separator = '\t';
     private final char comment = '#';
@@ -66,15 +66,17 @@ public class DirectoryBookmarks {
     }
 
     private void printHelpAndExit() {
-        String bashrc = "~/.bashrc";
-        System.out.println("Script '" + appName + "' v" + appVersion + " (" + homePage + ")");
-        System.out.println("Usage: java " + appName + ".java [rsdec] bookmark directory optionalComment");
-        System.out.println("Integrate the script to Ubuntu: java " + appName + ".java i >> " + bashrc + " && . " + bashrc);
+        var isJar = isJar(getPathOfRunningApplication());
+        var bashrc = "~/.bashrc";
+        System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
+        System.out.println("Usage: java %s.java [rsdec] bookmark directory optionalComment".formatted(appName));
+        System.out.println("Integrate the script to Ubuntu: java %s.java i >> %s && . %s"
+                .formatted(appName, bashrc, bashrc));
         System.exit(1);
     }
 
     private void printDirectories() throws IOException {
-        File storeFile = getStoreFile();
+        var storeFile = getStoreFile();
         try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
@@ -92,8 +94,8 @@ public class DirectoryBookmarks {
             case currentMark:
                 return currentDir;
             default:
-                String extendedKey = key + separator;
-                File storeFile = getStoreFile();
+                var extendedKey = key + separator;
+                var storeFile = getStoreFile();
                 try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
                     Optional<String> dir = reader.lines()
                             .filter(line -> !line.startsWith(String.valueOf(comment)))
@@ -126,9 +128,9 @@ public class DirectoryBookmarks {
         if (currentMark.equals(dir)) {
             dir = currentDir;
         }
-        String extendedKey = key + separator;
-        File tempFile = getStoreFileTemplate();
-        File storeFile = getStoreFile();
+        var extendedKey = key + separator;
+        var tempFile = getStoreFileTemplate();
+        var storeFile = getStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.write(header);
             writer.write(newLine);
@@ -160,7 +162,7 @@ public class DirectoryBookmarks {
     }
 
     private File getStoreFile() {
-        File result = new File(homeDir, storeName);
+        var result = new File(homeDir, storeName);
         if (!result.isFile()) {
             try {
                 result.createNewFile();
@@ -232,9 +234,8 @@ public class DirectoryBookmarks {
 
     private void printInstall() {
         var applPath = getPathOfRunningApplication();
-        var forJar = applPath.toLowerCase(Locale.ENGLISH).endsWith(".jar");
         var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
-        var applExe = forJar
+        var applExe = isJar(applPath)
                 ? "%s -jar %s".formatted(javaExe, applPath)
                 : "%s %s".formatted(javaExe, applPath);
         var msg = String.join("\n", ""
@@ -244,6 +245,10 @@ public class DirectoryBookmarks {
                 , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentMark)
                 , "ldf() { directoryBookmarks r \"$1\"; }");
         System.out.println(msg);
+    }
+
+    private static boolean isJar(String applPath) {
+        return applPath.toLowerCase(Locale.ENGLISH).endsWith(".jar");
     }
 
     private String getPathOfRunningApplication() {
