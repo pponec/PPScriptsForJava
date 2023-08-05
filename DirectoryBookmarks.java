@@ -7,10 +7,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class DirectoryBookmarks {
@@ -67,11 +64,14 @@ public class DirectoryBookmarks {
 
     private void printHelpAndExit() {
         var isJar = isJar(getPathOfRunningApplication());
+        var javaExe = "java %s%s.%s".formatted(
+                isJar ? "-jar " : "",
+                appName,
+                isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
-        System.out.println("Usage: java %s.java [rsdec] bookmark directory optionalComment".formatted(appName));
-        System.out.println("Integrate the script to Ubuntu: java %s.java i >> %s && . %s"
-                .formatted(appName, bashrc, bashrc));
+        System.out.println("Usage: %s [rsdec] bookmark directory optionalComment".formatted(javaExe));
+        System.out.println("Integrate the script to Ubuntu: %s i >> %s && . %s".formatted(javaExe, bashrc, bashrc));
         System.exit(1);
     }
 
@@ -178,14 +178,7 @@ public class DirectoryBookmarks {
     }
 
     private void removeAllDeprecatedDiredtories() throws IOException {
-        var keys = Collections.<String>emptyList();
-        try (BufferedReader reader = new BufferedReader(new FileReader(getStoreFile()))) {
-            keys = reader.lines()
-                    .filter(line -> !line.startsWith(String.valueOf(comment)))
-                    .sorted()
-                    .map(line -> line.substring(0, line.indexOf(separator)))
-                    .toList();
-        }
+        var keys = getAllSortedKeys();
         keys.stream()
                 .filter(key -> {
                     try {
@@ -204,6 +197,18 @@ public class DirectoryBookmarks {
                         throw new IllegalStateException(e);
                     }
                 });
+    }
+
+    private List<String> getAllSortedKeys() throws IOException {
+        var result = Collections.<String>emptyList();
+        try (BufferedReader reader = new BufferedReader(new FileReader(getStoreFile()))) {
+            result = reader.lines()
+                    .filter(line -> !line.startsWith(String.valueOf(comment)))
+                    .sorted()
+                    .map(line -> line.substring(0, line.indexOf(separator)))
+                    .toList();
+        }
+        return result;
     }
 
     /** Compile the script and build it to the executable JAR file */
