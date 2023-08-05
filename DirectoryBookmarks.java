@@ -14,7 +14,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.6.1";
+    private final String appVersion = "1.7.0";
     private final String storeName = ".directory-bookmarks.csv";
     private final char separator = '\t';
     private final char comment = '#';
@@ -22,7 +22,7 @@ public class DirectoryBookmarks {
     private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
-    private final String currentMark = "CURRENT:DIR";
+    private final String currentDirMark = "";
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -48,6 +48,10 @@ public class DirectoryBookmarks {
                     o.printHelpAndExit();
                 o.delete(args[1]);
                 break;
+            case "k":
+                var dir = args.length > 1 ? args[1] : o.currentDir;
+                o.printAllKeysForDirectory(dir);
+                break;
             case "i":
                 o.printInstall();
                 break;
@@ -70,7 +74,7 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
-        System.out.println("Usage: %s [rsdec] bookmark directory optionalComment".formatted(javaExe));
+        System.out.println("Usage: %s [rsdkec] bookmark directory optionalComment".formatted(javaExe));
         System.out.println("Integrate the script to Ubuntu: %s i >> %s && . %s".formatted(javaExe, bashrc, bashrc));
         System.exit(1);
     }
@@ -91,7 +95,7 @@ public class DirectoryBookmarks {
                 return homeDir;
             case ".":
                 return key;
-            case currentMark:
+            case currentDirMark:
                 return currentDir;
             default:
                 var extendedKey = key + separator;
@@ -127,7 +131,7 @@ public class DirectoryBookmarks {
         if (key.contains(String.valueOf(separator))) {
             throw new IllegalArgumentException("the key contains a tab");
         }
-        if (currentMark.equals(dir)) {
+        if (currentDirMark.equals(dir)) {
             dir = currentDir;
         }
         var extendedKey = key + separator;
@@ -210,7 +214,7 @@ public class DirectoryBookmarks {
     }
 
     private void printAllKeysForDirectory(String directory) throws IOException {
-        getAllSortedKeys().stream().forEach(key -> {
+        getAllSortedKeys().forEach(key -> {
             if (directory.equals(getDirectory(key, ""))) {
                 System.out.println(key);
             }
@@ -253,7 +257,7 @@ public class DirectoryBookmarks {
                 , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
                 , "alias directoryBookmarks='%s'".formatted(applExe)
                 , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
-                , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentMark)
+                , "sdf() { directoryBookmarks s \"%s\" \"$@\"; }".formatted(currentDirMark)
                 , "ldf() { directoryBookmarks r \"$1\"; }");
         System.out.println(msg);
     }
