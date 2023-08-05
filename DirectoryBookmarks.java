@@ -85,7 +85,7 @@ public class DirectoryBookmarks {
         }
     }
 
-    private String getDirectory(String key, String defaultDir) throws IOException {
+    private String getDirectory(String key, String defaultDir) {
         switch (key) {
             case "~":
                 return homeDir;
@@ -97,21 +97,23 @@ public class DirectoryBookmarks {
                 var extendedKey = key + separator;
                 var storeFile = getStoreFile();
                 try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
-                    Optional<String> dir = reader.lines()
+                    var dir = reader.lines()
                             .filter(line -> !line.startsWith(String.valueOf(comment)))
                             .filter(line -> line.startsWith(extendedKey))
                             .map(line -> line.substring(extendedKey.length()))
                             .findFirst();
                     if (dir.isPresent()) {
-                        String dirString = dir.get();
-                        Pattern commentPattern = Pattern.compile("\\s+" + comment + "\\s");
-                        java.util.regex.Matcher commentMatcher = commentPattern.matcher(dirString);
+                        var dirString = dir.get();
+                        var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
+                        var commentMatcher = commentPattern.matcher(dirString);
                         if (commentMatcher.find()) {
                             return dirString.substring(0, commentMatcher.start());
                         } else {
                             return dirString;
                         }
                     }
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
                 }
                 return defaultDir;
         }
@@ -181,12 +183,8 @@ public class DirectoryBookmarks {
         var keys = getAllSortedKeys();
         keys.stream()
                 .filter(key -> {
-                    try {
-                        var dir = getDirectory(key, "");
-                        return dir.isEmpty() || !new File(dir).isDirectory();
-                    } catch (IOException e) {
-                        throw new IllegalStateException(e);
-                    }
+                    var dir = getDirectory(key, "");
+                    return dir.isEmpty() || !new File(dir).isDirectory();
                 })
                 .forEach(key -> {
                     try {
@@ -209,6 +207,14 @@ public class DirectoryBookmarks {
                     .toList();
         }
         return result;
+    }
+
+    private void printAllKeysForDirectory(String directory) throws IOException {
+        getAllSortedKeys().stream().forEach(key -> {
+            if (directory.equals(getDirectory(key, ""))) {
+                System.out.println(key);
+            }
+        });
     }
 
     /** Compile the script and build it to the executable JAR file */
