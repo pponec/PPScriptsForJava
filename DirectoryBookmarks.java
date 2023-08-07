@@ -14,9 +14,10 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.7.0";
+    private final String appVersion = "1.7.1";
     private final String storeName = ".directory-bookmarks.csv";
-    private final char separator = '\t';
+    private final char cellSeparator = '\t';
+    private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
     private final String newLine = System.lineSeparator();
     private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
@@ -89,6 +90,13 @@ public class DirectoryBookmarks {
         }
     }
 
+    /**
+     * Find the directory or get a default value.
+     * @param key The directory key can end with the name of the following subdirectory.
+     *            by the example: {@code "key/directoryName"} .
+     * @param defaultDir Default directory name.
+     * @return
+     */
     private String getDirectory(String key, String defaultDir) {
         switch (key) {
             case "~":
@@ -98,22 +106,24 @@ public class DirectoryBookmarks {
             case currentDirMark:
                 return currentDir;
             default:
-                var extendedKey = key + separator;
+                var idx = key.indexOf(dirSeparator);
+                var extKey = (idx >= 0 ? key.substring(0, idx) : key) + cellSeparator;
                 var storeFile = getStoreFile();
                 try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
                     var dir = reader.lines()
                             .filter(line -> !line.startsWith(String.valueOf(comment)))
-                            .filter(line -> line.startsWith(extendedKey))
-                            .map(line -> line.substring(extendedKey.length()))
+                            .filter(line -> line.startsWith(extKey))
+                            .map(line -> line.substring(extKey.length()))
                             .findFirst();
                     if (dir.isPresent()) {
                         var dirString = dir.get();
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
+                        var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
                         if (commentMatcher.find()) {
-                            return dirString.substring(0, commentMatcher.start());
+                            return dirString.substring(0, commentMatcher.start()) + endDir;
                         } else {
-                            return dirString;
+                            return dirString + endDir;
                         }
                     }
                 } catch (IOException e) {
@@ -128,22 +138,22 @@ public class DirectoryBookmarks {
     }
 
     private void save(String key, String dir, String... comments) throws IOException {
-        if (key.contains(String.valueOf(separator))) {
-            throw new IllegalArgumentException("the key contains a tab");
+        if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
+            throw new IllegalArgumentException("the key contains a tab or a slash");
         }
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
         }
-        var extendedKey = key + separator;
+        var extendedKey = key + cellSeparator;
         var tempFile = getStoreFileTemplate();
         var storeFile = getStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.write(header);
             writer.write(newLine);
             if (!dir.isEmpty()) {
-                writer.write(key + separator + dir);
+                writer.write(key + cellSeparator + dir);
                 if (comments.length > 0) {
-                    writer.write("" + separator + comment);
+                    writer.write("" + cellSeparator + comment);
                     for (String comment : comments) {
                         writer.append(" ").append(comment);
                     }
@@ -207,7 +217,7 @@ public class DirectoryBookmarks {
             result = reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
-                    .map(line -> line.substring(0, line.indexOf(separator)))
+                    .map(line -> line.substring(0, line.indexOf(cellSeparator)))
                     .toList();
         }
         return result;
