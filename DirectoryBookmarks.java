@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
-    private final String appName = getClass().getName();
+    private final String appName = getClass().getSimpleName();
     private final String appVersion = "1.7.2";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
@@ -31,7 +31,7 @@ public class DirectoryBookmarks {
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = "";
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/main/%s.java"
-            .formatted(getClass().getSimpleName());
+            .formatted(appName);
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -271,9 +271,8 @@ public class DirectoryBookmarks {
 
     private void download() throws IOException , InterruptedException {
         var exePath = getPathOfRunningApplication();
-        var srcName = getClass().getSimpleName();
-        var scriptDir = exePath.substring(0, exePath.lastIndexOf(srcName) - 1);
-        var srcPath = "%s/%s.java".formatted(scriptDir, srcName);
+        var scriptDir = exePath.substring(0, exePath.lastIndexOf(appName) - 1);
+        var srcPath = "%s/%s.java".formatted(scriptDir, appName);
 
         System.out.println(">>> exePath: " + exePath);
         System.out.println(">>> scriptDir: " + scriptDir);
@@ -314,7 +313,7 @@ public class DirectoryBookmarks {
             var url = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
             return URLDecoder.decode(url, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            return "$s.$s".formatted(getClass().getSimpleName(), "java");
+            return "$s.$s".formatted(appName, "java");
         }
     }
 }
