@@ -4,8 +4,13 @@
 
 import javax.tools.ToolProvider;
 import java.io.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -24,6 +29,8 @@ public class DirectoryBookmarks {
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = "";
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/main/%s.java"
+            .formatted(getClass().getSimpleName());
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -61,6 +68,9 @@ public class DirectoryBookmarks {
                 break;
             case "c":
                 o.compile();
+                break;
+            case "u": // update
+                o.download();
                 break;
             default:
                 o.printHelpAndExit();
@@ -257,12 +267,31 @@ public class DirectoryBookmarks {
         }
     }
 
+    private void download() throws IOException , InterruptedException {
+        var exePath = getPathOfRunningApplication();
+        var srcName = getClass().getSimpleName();
+        var scriptDir = exePath.substring(0, exePath.lastIndexOf(srcName));
+        var srcPath = "%s/%s.java".formatted(scriptDir, srcName);
+
+        System.out.println(">>> srcPath: " + srcPath);
+        var client = HttpClient.newHttpClient();
+        var request = HttpRequest.newBuilder()
+                .uri(URI.create(sourceUrl))
+                .build();
+        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200) {
+            Files.writeString(Path.of(srcPath), response.body());
+        } else {
+            throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
+        }
+    }
+
     private void printInstall() {
-        var applPath = getPathOfRunningApplication();
+        var exePath = getPathOfRunningApplication();
         var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
-        var applExe = isJar(applPath)
-                ? "%s -jar %s".formatted(javaExe, applPath)
-                : "%s %s".formatted(javaExe, applPath);
+        var applExe = isJar(exePath)
+                ? "%s -jar %s".formatted(javaExe, exePath)
+                : "%s %s".formatted(javaExe, exePath);
         var msg = String.join("\n", ""
                 , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
                 , "alias directoryBookmarks='%s'".formatted(applExe)
