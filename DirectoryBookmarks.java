@@ -30,8 +30,10 @@ public class DirectoryBookmarks {
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = "";
-    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/main/%s.java"
-            .formatted(appName);
+    private final Class<?> mainClass = getClass();
+    private final DirectoryBookmarks utils = this; // In the future, move the instruments to a separate class.
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
+            .formatted(true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -68,26 +70,30 @@ public class DirectoryBookmarks {
                 o.removeAllDeprecatedDiredtories();
                 break;
             case "c":
-                o.compile();
+                o.utils.compile();
                 break;
             case "u": // update
                 o.download();
+                if (o.isJar()) {
+                    o.compile();
+                    System.out.println("Version %s was downloaded and compiled".formatted(o.appVersion));
+                }
                 break;
             default:
-                System.out.println("Arguments are not supported:\n%s".formatted(String.join(" ", args)));
+                System.out.println("Arguments are not supported: %s".formatted(String.join(" ", args)));
                 o.printHelpAndExit();
         }
     }
 
     private void printHelpAndExit() {
-        var isJar = isJar(getPathOfRunningApplication());
+        var isJar = utils.isJar();
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
-        System.out.println("Usage: %s [rsdkec] bookmark directory optionalComment".formatted(javaExe));
+        System.out.println("Usage: %s [rsdkecu] bookmark directory optionalComment".formatted(javaExe));
         System.out.println("Integrate the script to Ubuntu: %s i >> %s && . %s".formatted(javaExe, bashrc, bashrc));
         System.exit(1);
     }
@@ -243,40 +249,8 @@ public class DirectoryBookmarks {
         });
     }
 
-    /** Compile the script and build it to the executable JAR file */
-    private void compile() throws Exception {
-        var classFile = new File(appName + ".class");
-        classFile.deleteOnExit();
-
-        var compiler = ToolProvider.getSystemJavaCompiler();
-        if (compiler == null) {
-            throw new IllegalStateException("No Java Compiler is available");
-        }
-        var error = new ByteArrayOutputStream();
-        var result = compiler.run(null, null, new PrintStream(error), appName  + ".java");
-        if (result != 0) {
-            throw new IllegalStateException(error.toString());
-        }
-
-        // Build a JAR file:
-        var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
-        String[] arguments = {jarExe, "cfe", appName + ".jar", appName, classFile.getName()};
-        var process = new ProcessBuilder(arguments).start();
-        var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-        var exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new IllegalStateException(err);
-        }
-    }
-
-    private void download() throws IOException , InterruptedException {
-        var exePath = getPathOfRunningApplication();
-        var scriptDir = exePath.substring(0, exePath.lastIndexOf(appName) - 1);
-        var srcPath = "%s/%s.java".formatted(scriptDir, appName);
-
-        System.out.println(">>> exePath: " + exePath);
-        System.out.println(">>> scriptDir: " + scriptDir);
-        System.out.println(">>> srcPath: " + srcPath);
+    private void download() throws IOException, InterruptedException {
+        var srcPath = "%s/%s.java".formatted(utils.getScriptDir(), appName);
         var client = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
                 .uri(URI.create(sourceUrl))
@@ -290,9 +264,9 @@ public class DirectoryBookmarks {
     }
 
     private void printInstall() {
-        var exePath = getPathOfRunningApplication();
+        var exePath = utils.getPathOfRunningApplication();
         var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
-        var applExe = isJar(exePath)
+        var applExe = utils.isJar()
                 ? "%s -jar %s".formatted(javaExe, exePath)
                 : "%s %s".formatted(javaExe, exePath);
         var msg = String.join("\n", ""
@@ -304,13 +278,51 @@ public class DirectoryBookmarks {
         System.out.println(msg);
     }
 
-    private static boolean isJar(String applPath) {
-        return applPath.toLowerCase(Locale.ENGLISH).endsWith(".jar");
+    //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
+
+    /** Compile the script and build it to the executable JAR file */
+    private void compile() throws Exception {
+        var scriptDir = getScriptDir();
+        var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
+        var jarFile = "%s.jar".formatted(appName);
+        var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
+        var classFile = new File(scriptDir, "%s.class".formatted(appName));
+        classFile.deleteOnExit();
+
+        var compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IllegalStateException("No Java Compiler is available");
+        }
+        var error = new ByteArrayOutputStream();
+        var result = compiler.run(null, null, new PrintStream(error), fullJavaClass);
+        if (result != 0) {
+            throw new IllegalStateException(error.toString());
+        }
+
+        // Build a JAR file:
+        String[] arguments = {jarExe, "cfe", jarFile, appName, classFile.getName()};
+        var process = new ProcessBuilder(arguments)
+                .directory(classFile.getParentFile())
+                .start();
+        var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+        var exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new IllegalStateException(err);
+        }
+    }
+
+    private String getScriptDir() {
+        var exePath = getPathOfRunningApplication();
+        return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
+    }
+
+    private boolean isJar() {
+        return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
     }
 
     private String getPathOfRunningApplication() {
         try {
-            var url = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+            var url = mainClass.getProtectionDomain().getCodeSource().getLocation().getPath();
             return URLDecoder.decode(url, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "$s.$s".formatted(appName, "java");
