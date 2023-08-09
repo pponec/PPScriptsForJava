@@ -5,6 +5,7 @@
 import javax.tools.ToolProvider;
 import java.io.*;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -19,7 +20,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.7.1";
+    private final String appVersion = "1.7.2";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -73,6 +74,7 @@ public class DirectoryBookmarks {
                 o.download();
                 break;
             default:
+                System.out.println("Arguments are not supported:\n%s".formatted(String.join(" ", args)));
                 o.printHelpAndExit();
         }
     }
@@ -270,9 +272,11 @@ public class DirectoryBookmarks {
     private void download() throws IOException , InterruptedException {
         var exePath = getPathOfRunningApplication();
         var srcName = getClass().getSimpleName();
-        var scriptDir = exePath.substring(0, exePath.lastIndexOf(srcName));
+        var scriptDir = exePath.substring(0, exePath.lastIndexOf(srcName) - 1);
         var srcPath = "%s/%s.java".formatted(scriptDir, srcName);
 
+        System.out.println(">>> exePath: " + exePath);
+        System.out.println(">>> scriptDir: " + scriptDir);
         System.out.println(">>> srcPath: " + srcPath);
         var client = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
@@ -307,7 +311,8 @@ public class DirectoryBookmarks {
 
     private String getPathOfRunningApplication() {
         try {
-            return getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+            var url = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+            return URLDecoder.decode(url, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "$s.$s".formatted(getClass().getSimpleName(), "java");
         }
