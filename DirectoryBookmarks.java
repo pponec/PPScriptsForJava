@@ -77,6 +77,8 @@ public class DirectoryBookmarks {
                 if (o.isJar()) {
                     o.compile();
                     System.out.println("Version %s was downloaded and compiled".formatted(o.appVersion));
+                } else {
+                    System.out.println("Version %s was downloaded".formatted(o.appVersion));
                 }
                 break;
             default:
