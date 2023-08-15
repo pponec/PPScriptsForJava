@@ -255,14 +255,13 @@ public class DirectoryBookmarks {
     }
 
     private void download() throws IOException, InterruptedException {
-        var srcPath = "%s/%s.java".formatted(utils.getScriptDir(), appName);
         var client = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
                 .uri(URI.create(sourceUrl))
                 .build();
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() == 200) {
-            Files.writeString(Path.of(srcPath), response.body());
+            Files.writeString(Path.of(getSrcPath()), response.body());
         } else {
             throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
         }
@@ -271,8 +270,7 @@ public class DirectoryBookmarks {
     /** Read version from the external script. */
     private String getVersion() throws IOException {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
-        final var srcPath = "%s/%s.java".formatted(utils.getScriptDir(), appName);
-        try (BufferedReader reader = new BufferedReader(new FileReader(srcPath))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(getSrcPath()))) {
             return reader.lines()
                     .map(line ->  {
                         final var matcher = pattern.matcher(line);
@@ -341,6 +339,11 @@ public class DirectoryBookmarks {
 
     private boolean isJar() {
         return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
+    }
+
+    /** Get a full path to this source Java file. */
+    private String getSrcPath() {
+        return "%s/%s.java".formatted(utils.getScriptDir(), appName);
     }
 
     private String getPathOfRunningApplication() {
