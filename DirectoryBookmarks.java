@@ -1,6 +1,6 @@
 // package net.ponec.java.utils.script;
 // Java script converted from Kotlin by the GPTChat
-// Running by Java 11: $ java DirectoryBookmarks.java
+// Running by Java 17: $ java DirectoryBookmarks.java
 
 import javax.tools.ToolProvider;
 import java.io.*;
@@ -20,7 +20,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.2";
+    private final String appVersion = "1.7.3";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -33,7 +33,7 @@ public class DirectoryBookmarks {
     private final Class<?> mainClass = getClass();
     private final DirectoryBookmarks utils = this; // In the future, move the instruments to a separate class.
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
-            .formatted(true ? "main" : "development", appName);
+            .formatted(!true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
@@ -80,6 +80,9 @@ public class DirectoryBookmarks {
                 } else {
                     System.out.println("Version %s was downloaded".formatted(o.appVersion));
                 }
+                break;
+            case "v":
+                System.out.println(o.getVersion());
                 break;
             default:
                 System.out.println("Arguments are not supported: %s".formatted(String.join(" ", args)));
@@ -265,6 +268,24 @@ public class DirectoryBookmarks {
         }
     }
 
+    /** Read version from the external script. */
+    private String getVersion() throws IOException {
+        final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
+        final var srcPath = "%s/%s.java".formatted(utils.getScriptDir(), appName);
+        try (BufferedReader reader = new BufferedReader(new FileReader(srcPath))) {
+            return reader.lines()
+                    .map(line ->  {
+                        final var matcher = pattern.matcher(line);
+                        return matcher.find() ? matcher.group(1) : null;
+                    })
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(appVersion);
+        } catch (Exception e) {
+            return appVersion;
+        }
+    }
+
     private void printInstall() {
         var exePath = utils.getPathOfRunningApplication();
         var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
@@ -323,9 +344,17 @@ public class DirectoryBookmarks {
     }
 
     private String getPathOfRunningApplication() {
+        final var protocol = "file:/";
+        final var windows = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
         try {
-            var url = mainClass.getProtectionDomain().getCodeSource().getLocation().getPath();
-            return URLDecoder.decode(url, StandardCharsets.UTF_8);
+            final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
+            var result = location.toString();
+            if (windows && result.startsWith(protocol)) {
+                result = result.substring(protocol.length());
+            } else {
+                result = location.getPath();
+            }
+            return URLDecoder.decode(result, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return "$s.$s".formatted(appName, "java");
         }
