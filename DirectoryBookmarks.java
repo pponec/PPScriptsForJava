@@ -52,7 +52,7 @@ public class DirectoryBookmarks {
                 if (args.length < 3)
                     o.printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
-                o.save(args[2], args[1], msg);
+                o.save(args[1], args[2], msg); // (dir, key, comments)
                 break;
             case "d":
                 if (args.length < 2)
@@ -160,7 +160,7 @@ public class DirectoryBookmarks {
         save(key, "");
     }
 
-    private void save(String key, String dir, String... comments) throws IOException {
+    private void save(String dir, String key, String... comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
             throw new IllegalArgumentException("the key contains a tab or a slash");
         }
