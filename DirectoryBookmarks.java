@@ -39,39 +39,39 @@ public class DirectoryBookmarks {
         if (args.length == 0)
             o.printHelpAndExit();
         switch (args[0]) {
-            case "r": // read directory
+            case "l", "r" -> { // List all directories or read a directory
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = o.getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
                     System.out.println(dir);
                 } else {
                     o.printDirectories();
                 }
-                break;
-            case "s":
+            }
+            case "s" -> {
                 if (args.length < 3)
                     o.printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 o.save(args[1], args[2], msg); // (dir, key, comments)
-                break;
-            case "d":
+            }
+            case "d" -> {
                 if (args.length < 2)
                     o.printHelpAndExit();
                 o.delete(args[1]);
-                break;
-            case "k":
+            }
+            case "k"-> {
                 var dir = args.length > 1 ? args[1] : o.currentDir;
                 o.printAllKeysForDirectory(dir);
-                break;
-            case "i":
+            }
+            case "i"-> {
                 o.printInstall();
-                break;
-            case "e":
-                o.removeAllDeprecatedDiredtories();
-                break;
-            case "c":
+            }
+            case "f"-> {
+                o.fixMarksOfMissingDirectories();
+            }
+            case "c" -> {
                 o.compile();
-                break;
-            case "u": // update
+            }
+            case "u" -> { // update
                 o.download();
                 if (o.isJar()) {
                     o.compile();
@@ -79,13 +79,14 @@ public class DirectoryBookmarks {
                 } else {
                     System.out.printf("Version %s was downloaded%n", o.appVersion);
                 }
-                break;
-            case "v":
+            }
+            case "v"-> {
                 System.out.println(o.getVersion());
-                break;
-            default:
+            }
+            default -> {
                 System.out.printf("Arguments are not supported: %s%n", String.join(" ", args));
                 o.printHelpAndExit();
+            }
         }
     }
 
@@ -97,7 +98,7 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         System.out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
-        System.out.printf("Usage: %s [rsdkecu] bookmark directory optionalComment%n", javaExe);
+        System.out.printf("Usage: %s [lsdkfcu] bookmark directory optionalComment%n", javaExe);
         System.out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
@@ -214,7 +215,7 @@ public class DirectoryBookmarks {
         return File.createTempFile("storeName", "", new File(homeDir));
     }
 
-    private void removeAllDeprecatedDiredtories() throws IOException {
+    private void fixMarksOfMissingDirectories() throws IOException {
         var keys = getAllSortedKeys();
         keys.stream()
                 .filter(key -> {
@@ -293,7 +294,7 @@ public class DirectoryBookmarks {
                 , "alias directoryBookmarks='%s'".formatted(applExe)
                 , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
                 , "sdf() { directoryBookmarks s \"%s\" \"$@\"; }".formatted(currentDirMark)
-                , "ldf() { directoryBookmarks r \"$1\"; }");
+                , "ldf() { directoryBookmarks l \"$1\"; }");
         System.out.println(msg);
     }
 
