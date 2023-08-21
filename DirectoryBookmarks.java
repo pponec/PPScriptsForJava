@@ -20,7 +20,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.3";
+    private final String appVersion = "1.7.4";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -31,7 +31,6 @@ public class DirectoryBookmarks {
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = "";
     private final Class<?> mainClass = getClass();
-    private final DirectoryBookmarks utils = this; // In the future, move the instruments to a separate class.
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(!true ? "main" : "development", appName);
 
@@ -70,36 +69,36 @@ public class DirectoryBookmarks {
                 o.removeAllDeprecatedDiredtories();
                 break;
             case "c":
-                o.utils.compile();
+                o.compile();
                 break;
             case "u": // update
                 o.download();
                 if (o.isJar()) {
                     o.compile();
-                    System.out.println("Version %s was downloaded and compiled".formatted(o.appVersion));
+                    System.out.printf("Version %s was downloaded and compiled%n", o.appVersion);
                 } else {
-                    System.out.println("Version %s was downloaded".formatted(o.appVersion));
+                    System.out.printf("Version %s was downloaded%n", o.appVersion);
                 }
                 break;
             case "v":
                 System.out.println(o.getVersion());
                 break;
             default:
-                System.out.println("Arguments are not supported: %s".formatted(String.join(" ", args)));
+                System.out.printf("Arguments are not supported: %s%n", String.join(" ", args));
                 o.printHelpAndExit();
         }
     }
 
     private void printHelpAndExit() {
-        var isJar = utils.isJar();
+        var isJar = isJar();
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
-        System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
-        System.out.println("Usage: %s [rsdkecu] bookmark directory optionalComment".formatted(javaExe));
-        System.out.println("Integrate the script to Ubuntu: %s i >> %s && . %s".formatted(javaExe, bashrc, bashrc));
+        System.out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
+        System.out.printf("Usage: %s [rsdkecu] bookmark directory optionalComment%n", javaExe);
+        System.out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
 
@@ -118,7 +117,6 @@ public class DirectoryBookmarks {
      * @param key The directory key can end with the name of the following subdirectory.
      *            by the example: {@code "key/directoryName"} .
      * @param defaultDir Default directory name.
-     * @return
      */
     private String getDirectory(String key, String defaultDir) {
         switch (key) {
@@ -143,11 +141,10 @@ public class DirectoryBookmarks {
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
                         var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
-                        if (commentMatcher.find()) {
-                            return dirString.substring(0, commentMatcher.start()) + endDir;
-                        } else {
-                            return dirString + endDir;
-                        }
+                        return (commentMatcher.find()
+                                 ? dirString.substring(0, commentMatcher.start())
+                                 : dirString)
+                                 + endDir;
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -187,6 +184,7 @@ public class DirectoryBookmarks {
                 reader.lines()
                         .filter(line -> !line.startsWith(String.valueOf(comment)))
                         .filter(line -> !line.startsWith(extendedKey))
+                        .sorted()
                         .forEach(line -> {
                             try {
                                 writer.write(line);
@@ -268,7 +266,7 @@ public class DirectoryBookmarks {
     }
 
     /** Read version from the external script. */
-    private String getVersion() throws IOException {
+    private String getVersion() {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
         try (BufferedReader reader = new BufferedReader(new FileReader(getSrcPath()))) {
             return reader.lines()
@@ -285,9 +283,9 @@ public class DirectoryBookmarks {
     }
 
     private void printInstall() {
-        var exePath = utils.getPathOfRunningApplication();
+        var exePath = getPathOfRunningApplication();
         var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
-        var applExe = utils.isJar()
+        var applExe = isJar()
                 ? "%s -jar %s".formatted(javaExe, exePath)
                 : "%s %s".formatted(javaExe, exePath);
         var msg = String.join("\n", ""
@@ -343,7 +341,7 @@ public class DirectoryBookmarks {
 
     /** Get a full path to this source Java file. */
     private String getSrcPath() {
-        return "%s/%s.java".formatted(utils.getScriptDir(), appName);
+        return "%s/%s.java".formatted(getScriptDir(), appName);
     }
 
     private String getPathOfRunningApplication() {
@@ -359,7 +357,7 @@ public class DirectoryBookmarks {
             }
             return URLDecoder.decode(result, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            return "$s.$s".formatted(appName, "java");
+            return "%s.%s".formatted(appName, "java");
         }
     }
 }
