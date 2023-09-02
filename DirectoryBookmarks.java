@@ -20,7 +20,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.4";
+    private final String appVersion = "1.7.5";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -29,17 +29,16 @@ public class DirectoryBookmarks {
     private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
-    private final String currentDirMark = "";
+    private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
-            .formatted(!true ? "main" : "development", appName);
+            .formatted(true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
         final var o = new DirectoryBookmarks();
-        if (args.length == 0)
-            o.printHelpAndExit();
-        switch (args[0]) {
-            case "l", "r" -> { // List all directories or read a directory
+        if (args.length == 0 || args[0].isEmpty()) o.printHelpAndExit();
+        switch (args[0].charAt(args[0].length() - 1)) {
+            case 'l', 'r' -> { // list all directories or find one directory.
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = o.getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
                     System.out.println(dir);
@@ -47,31 +46,31 @@ public class DirectoryBookmarks {
                     o.printDirectories();
                 }
             }
-            case "s" -> {
+            case 's' -> {
                 if (args.length < 3)
                     o.printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 o.save(args[1], args[2], msg); // (dir, key, comments)
             }
-            case "d" -> {
+            case 'd' -> {
                 if (args.length < 2)
                     o.printHelpAndExit();
                 o.delete(args[1]);
             }
-            case "k"-> {
+            case 'k'-> {
                 var dir = args.length > 1 ? args[1] : o.currentDir;
                 o.printAllKeysForDirectory(dir);
             }
-            case "i"-> {
+            case 'i'-> {
                 o.printInstall();
             }
-            case "f"-> {
+            case 'f'-> {
                 o.fixMarksOfMissingDirectories();
             }
-            case "c" -> {
+            case 'c' -> {
                 o.compile();
             }
-            case "u" -> { // update
+            case 'u' -> { // update
                 o.download();
                 if (o.isJar()) {
                     o.compile();
@@ -80,7 +79,7 @@ public class DirectoryBookmarks {
                     System.out.printf("Version %s was downloaded%n", o.appVersion);
                 }
             }
-            case "v"-> {
+            case 'v'-> {
                 System.out.println(o.getVersion());
             }
             default -> {
@@ -123,8 +122,6 @@ public class DirectoryBookmarks {
         switch (key) {
             case "~":
                 return homeDir;
-            case ".":
-                return key;
             case currentDirMark:
                 return currentDir;
             default:
@@ -293,7 +290,7 @@ public class DirectoryBookmarks {
                 , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
                 , "alias directoryBookmarks='%s'".formatted(applExe)
                 , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
-                , "sdf() { directoryBookmarks s \"%s\" \"$@\"; }".formatted(currentDirMark)
+                , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                 , "ldf() { directoryBookmarks l \"$1\"; }");
         System.out.println(msg);
     }
