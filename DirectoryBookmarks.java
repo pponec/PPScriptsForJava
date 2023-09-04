@@ -20,13 +20,13 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.5";
+    private final String appVersion = "1.7.6";
     private final String storeName = ".directory-bookmarks.csv";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
     private final String newLine = System.lineSeparator();
-    private final String header = comment + " A directory bookmarks for the '" + appName + "' script";
+    private final String header = "%s A directory bookmarks for the '%s' script".formatted(comment, appName);
     private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
@@ -286,13 +286,24 @@ public class DirectoryBookmarks {
         var applExe = isJar()
                 ? "%s -jar %s".formatted(javaExe, exePath)
                 : "%s %s".formatted(javaExe, exePath);
-        var msg = String.join("\n", ""
-                , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
-                , "alias directoryBookmarks='%s'".formatted(applExe)
-                , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
-                , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
-                , "ldf() { directoryBookmarks l \"$1\"; }");
-        System.out.println(msg);
+        if (isSystemWindows()) {
+            var msg = String.join("\n", ""
+                    , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
+                    , "alias directoryBookmarks='%s'".formatted(applExe)
+                    , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
+                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
+                    , "ldf() { directoryBookmarks l \"$1\"; }");
+            System.out.println(msg);
+        } else {
+            var msg = String.join("\n", ""
+                    , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
+                    , "alias directoryBookmarks='%s'".formatted(applExe)
+                    , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
+                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
+                    , "ldf() { directoryBookmarks l \"$1\"; }");
+            System.out.println(msg);
+        }
+
     }
 
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
@@ -344,11 +355,10 @@ public class DirectoryBookmarks {
 
     private String getPathOfRunningApplication() {
         final var protocol = "file:/";
-        final var windows = System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
         try {
             final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
             var result = location.toString();
-            if (windows && result.startsWith(protocol)) {
+            if (isSystemWindows() && result.startsWith(protocol)) {
                 result = result.substring(protocol.length());
             } else {
                 result = location.getPath();
@@ -357,5 +367,9 @@ public class DirectoryBookmarks {
         } catch (Exception e) {
             return "%s.%s".formatted(appName, "java");
         }
+    }
+
+    private boolean isSystemWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
     }
 }
