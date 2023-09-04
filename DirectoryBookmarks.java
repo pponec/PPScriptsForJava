@@ -290,39 +290,27 @@ public class DirectoryBookmarks {
 
     private void printInstall() {
         var exePath = getPathOfRunningApplication();
-        var isWin = isSystemWindows();
-        var javaExe = isWin
-                ? "%s/bin/java".formatted(System.getProperty("java.home"))
-                : "%s\\bin\\java".formatted(System.getProperty("java.home"));
+        var javaExe = "%s\\bin\\java".formatted(System.getProperty("java.home"));
         var applExe = isJar()
                 ? "%s -jar %s".formatted(javaExe, exePath)
                 : "%s %s".formatted(javaExe, exePath);
-        if (isWin) {
-//            function directoryBookmarks { java C:\Users\ppone\Desktop\bin\DirectoryBookmarks.java $args }
-//            function cdf { Set-Location -Path $(directoryBookmarks r "$args") }
-//            function sdf { directoryBookmarks s $PWD.path $args }
-//            function sdf { directoryBookmarks s C:\Users $args }
-//
-//            function ldf { directoryBookmarks r $args }
-
-
+        if (isSystemWindows()) {
             var msg = String.join(System.lineSeparator(), ""
-                    , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
-                    , "alias directoryBookmarks='%s'".formatted(applExe)
-                    , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
-                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
-                    , "ldf() { directoryBookmarks l \"$1\"; }");
+                    , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
+                    , "function directoryBookmarks { %s $args }".formatted(javaExe.replace('/', '\\'))
+                    , "function cdf { Set-Location -Path $(directoryBookmarks r $args) }"
+                    , "function sdf { directoryBookmarks s . $args }"
+                    , "function ldf { directoryBookmarks r $args }");
             out.println(msg);
         } else {
             var msg = String.join(System.lineSeparator(), ""
-                    , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
+                    , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(applExe)
                     , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
                     , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
         }
-
     }
 
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
