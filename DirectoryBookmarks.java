@@ -88,7 +88,12 @@ public class DirectoryBookmarks {
                 }
             }
             case 'v'-> {
-                out.println(getVersion());
+                var scriptVersion = getScriptVersion();
+                if (appVersion.equals(scriptVersion)) {
+                    out.println(getScriptVersion());
+                } else {
+                    out.printf("%s -> %s".formatted(scriptVersion, appVersion));
+                }
             }
             default -> {
                 out.printf("Arguments are not supported: %s%n", String.join(" ", args));
@@ -272,7 +277,7 @@ public class DirectoryBookmarks {
     }
 
     /** Read version from the external script. */
-    private String getVersion() {
+    private String getScriptVersion() {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
         try (BufferedReader reader = new BufferedReader(new FileReader(getSrcPath()))) {
             return reader.lines()
