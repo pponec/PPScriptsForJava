@@ -1,5 +1,4 @@
 // package net.ponec.java.utils.script;
-// Java script converted from Kotlin by the GPTChat
 // Running by Java 17: $ java DirectoryBookmarks.java
 
 import javax.tools.ToolProvider;
@@ -35,61 +34,65 @@ public class DirectoryBookmarks {
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(true ? "main" : "development", appName);
 
+    public static void main(String[] args) throws Exception {
+        new DirectoryBookmarks(System.out).start(args);
+    }
+
     protected DirectoryBookmarks(PrintStream out) {
         this.out = out;
     }
 
-    public static void main(String[] args) throws Exception {
-        final var o = new DirectoryBookmarks(System.out);
-        if (args.length == 0 || args[0].isEmpty()) o.printHelpAndExit();
+    /** The main object method */
+    public void start(String... args) throws Exception {
+        if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
         switch (args[0].charAt(args[0].length() - 1)) {
             case 'l', 'r' -> { // list all directories or find one directory.
                 if (args.length > 1 && !args[1].isEmpty()) {
-                    var dir = o.getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
-                    o.out.println(dir);
+                    var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
+                    out.println(dir);
                 } else {
-                    o.printDirectories();
+                    printDirectories();
                 }
             }
             case 's' -> {
                 if (args.length < 3)
-                    o.printHelpAndExit();
+                    printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
-                o.save(args[1], args[2], msg); // (dir, key, comments)
+                save(args[1], args[2], msg); // (dir, key, comments)
             }
             case 'd' -> {
                 if (args.length < 2)
-                    o.printHelpAndExit();
-                o.delete(args[1]);
+                    printHelpAndExit();
+                delete(args[1]);
             }
             case 'k'-> {
-                var dir = args.length > 1 ? args[1] : o.currentDir;
-                o.printAllKeysForDirectory(dir);
+                var dir = args.length > 1 ? args[1] : currentDir;
+                printAllKeysForDirectory(dir);
             }
             case 'i'-> {
-                o.printInstall();
+                printInstall();
             }
             case 'f'-> {
-                o.fixMarksOfMissingDirectories();
+                fixMarksOfMissingDirectories();
             }
             case 'c' -> {
-                o.compile();
+                compile();
             }
             case 'u' -> { // update
-                o.download();
-                if (o.isJar()) {
-                    o.compile();
-                    o.out.printf("Version %s was downloaded and compiled%n", o.appVersion);
+                download();
+                if (isJar()) {
+                    compile();
+                    out.printf("Version %s was downloaded and compiled%n", appVersion);
                 } else {
-                    o.out.printf("Version %s was downloaded%n", o.appVersion);
+                    out.printf("Version %s was downloaded%n", appVersion);
                 }
             }
             case 'v'-> {
-                o.out.println(o.getVersion());
+                out.println(getVersion());
             }
             default -> {
-                o.out.printf("Arguments are not supported: %s%n", String.join(" ", args));
-                o.printHelpAndExit();
+                out.printf("Arguments are not supported: %s%n", String.join(" ", args));
+                printHelpAndExit();
             }
         }
     }
