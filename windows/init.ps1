@@ -1,7 +1,6 @@
-# Windows PowerShell script to create a shortcuts for the DirectoryBookmarks utilities
+# Windows PowerShell script template to create shortcuts for the DirectoryBookmarks utility
 
 function directoryBookmarks { java $HOME\bin\DirectoryBookmarks.java $args }
-# function directoryBookmarks { java -jar $HOME\bin\DirectoryBookmarks.jar $args }
-function cdf { Set-Location -Path $(directoryBookmarks r $args) }
-function sdf { directoryBookmarks s $PWD.path $args }
-function ldf { directoryBookmarks r $args }
+function cdf { Set-Location -Path $(directoryBookmarks -r $args) }
+function ldf { directoryBookmarks -r $args }
+function sdf { directoryBookmarks -s $PWD.path $args }
