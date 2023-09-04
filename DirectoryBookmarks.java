@@ -110,7 +110,7 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [lsdkfcu] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s -[lsdkfcu] bookmark directory optionalComment%n", javaExe);
         out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
@@ -303,17 +303,17 @@ public class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { %s $args }".formatted(javaExe.replace('/', '\\'))
-                    , "function cdf { Set-Location -Path $(directoryBookmarks r $args) }"
-                    , "function sdf { directoryBookmarks s . $args }"
-                    , "function ldf { directoryBookmarks r $args }");
+                    , "function cdf { Set-Location -Path $(directoryBookmarks -r $args) }"
+                    , "function sdf { directoryBookmarks -s . $args }"
+                    , "function ldf { directoryBookmarks -r $args }");
             out.println(msg);
         } else {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(applExe)
-                    , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
-                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
-                    , "ldf() { directoryBookmarks l \"$1\"; }");
+                    , "cdf() { cd \"$(directoryBookmarks -r \"$1\")\"; }"
+                    , "sdf() { directoryBookmarks -s %s \"$@\"; }".formatted(currentDirMark)
+                    , "ldf() { directoryBookmarks -l \"$1\"; }");
             out.println(msg);
         }
     }
