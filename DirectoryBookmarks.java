@@ -31,17 +31,22 @@ public class DirectoryBookmarks {
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
+    private final PrintStream out;
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(true ? "main" : "development", appName);
 
+    protected DirectoryBookmarks(PrintStream out) {
+        this.out = out;
+    }
+
     public static void main(String[] args) throws Exception {
-        final var o = new DirectoryBookmarks();
+        final var o = new DirectoryBookmarks(System.out);
         if (args.length == 0 || args[0].isEmpty()) o.printHelpAndExit();
         switch (args[0].charAt(args[0].length() - 1)) {
             case 'l', 'r' -> { // list all directories or find one directory.
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = o.getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
-                    System.out.println(dir);
+                    o.out.println(dir);
                 } else {
                     o.printDirectories();
                 }
@@ -74,16 +79,16 @@ public class DirectoryBookmarks {
                 o.download();
                 if (o.isJar()) {
                     o.compile();
-                    System.out.printf("Version %s was downloaded and compiled%n", o.appVersion);
+                    o.out.printf("Version %s was downloaded and compiled%n", o.appVersion);
                 } else {
-                    System.out.printf("Version %s was downloaded%n", o.appVersion);
+                    o.out.printf("Version %s was downloaded%n", o.appVersion);
                 }
             }
             case 'v'-> {
-                System.out.println(o.getVersion());
+                o.out.println(o.getVersion());
             }
             default -> {
-                System.out.printf("Arguments are not supported: %s%n", String.join(" ", args));
+                o.out.printf("Arguments are not supported: %s%n", String.join(" ", args));
                 o.printHelpAndExit();
             }
         }
@@ -96,9 +101,9 @@ public class DirectoryBookmarks {
                 appName,
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
-        System.out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
-        System.out.printf("Usage: %s [lsdkfcu] bookmark directory optionalComment%n", javaExe);
-        System.out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
+        out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
+        out.printf("Usage: %s [lsdkfcu] bookmark directory optionalComment%n", javaExe);
+        out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
 
@@ -108,7 +113,7 @@ public class DirectoryBookmarks {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
-                    .forEach(System.out::println);
+                    .forEach(out::println);
         }
     }
 
@@ -222,7 +227,7 @@ public class DirectoryBookmarks {
                 .forEach(key -> {
                     try {
                         var msg = "Removed: %s\t%s".formatted(key, getDirectory(key, "?"));
-                        System.out.println(msg);
+                        out.println(msg);
                         delete(key);
                     } catch (IOException e) {
                         throw new IllegalStateException(e);
@@ -245,7 +250,7 @@ public class DirectoryBookmarks {
     private void printAllKeysForDirectory(String directory) throws IOException {
         getAllSortedKeys().forEach(key -> {
             if (directory.equals(getDirectory(key, ""))) {
-                System.out.println(key);
+                out.println(key);
             }
         });
     }
@@ -282,26 +287,37 @@ public class DirectoryBookmarks {
 
     private void printInstall() {
         var exePath = getPathOfRunningApplication();
-        var javaExe = "%s/bin/java".formatted(System.getProperty("java.home"));
+        var isWin = isSystemWindows();
+        var javaExe = isWin
+                ? "%s/bin/java".formatted(System.getProperty("java.home"))
+                : "%s\\bin\\java".formatted(System.getProperty("java.home"));
         var applExe = isJar()
                 ? "%s -jar %s".formatted(javaExe, exePath)
                 : "%s %s".formatted(javaExe, exePath);
-        if (isSystemWindows()) {
-            var msg = String.join("\n", ""
+        if (isWin) {
+//            function directoryBookmarks { java C:\Users\ppone\Desktop\bin\DirectoryBookmarks.java $args }
+//            function cdf { Set-Location -Path $(directoryBookmarks r "$args") }
+//            function sdf { directoryBookmarks s $PWD.path $args }
+//            function sdf { directoryBookmarks s C:\Users $args }
+//
+//            function ldf { directoryBookmarks r $args }
+
+
+            var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(applExe)
                     , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
                     , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks l \"$1\"; }");
-            System.out.println(msg);
+            out.println(msg);
         } else {
-            var msg = String.join("\n", ""
+            var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(applExe)
                     , "cdf() { cd \"$(directoryBookmarks r \"$1\")\"; }"
                     , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks l \"$1\"; }");
-            System.out.println(msg);
+            out.println(msg);
         }
 
     }
