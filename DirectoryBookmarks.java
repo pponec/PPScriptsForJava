@@ -21,6 +21,7 @@ public class DirectoryBookmarks {
     private final String appName = getClass().getSimpleName();
     private final String appVersion = "1.7.7";
     private final File storeName;
+    private final PrintStream out;
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
@@ -29,7 +30,6 @@ public class DirectoryBookmarks {
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
-    private final PrintStream out;
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(true ? "main" : "development", appName);
 
@@ -176,7 +176,7 @@ public class DirectoryBookmarks {
             dir = currentDir;
         }
         var extendedKey = key + cellSeparator;
-        var tempFile = getStoreFileTemplate();
+        var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.write(header);
@@ -220,8 +220,8 @@ public class DirectoryBookmarks {
         return storeName;
     }
 
-    private File getStoreFileTemplate() throws IOException {
-        return File.createTempFile("storeName", "", storeName.getParentFile());
+    private File getTempStoreFile() throws IOException {
+        return File.createTempFile(".dirbook", "", storeName.getParentFile());
     }
 
     private void fixMarksOfMissingDirectories() throws IOException {
