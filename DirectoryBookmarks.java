@@ -47,8 +47,8 @@ public class DirectoryBookmarks {
     /** The main object method */
     public void start(String... args) throws Exception {
         if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
-        switch (args[0].charAt(args[0].length() - 1)) {
-            case 'l', 'r' -> { // list all directories or find one directory.
+        switch (args[0].charAt(args[0].length() - 1)) { // get the last character
+            case 'l', 'r' -> { // list all directories or find one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
                     out.println(dir);
@@ -214,7 +214,7 @@ public class DirectoryBookmarks {
             try {
                 storeName.createNewFile();
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new IllegalStateException(storeName.toString(), e);
             }
         }
         return storeName;
