@@ -1,5 +1,5 @@
-// package net.ponec.java.utils.script;
 // Running by Java 17: $ java DirectoryBookmarks.java
+// Licence: Apache License, Version 2.0, https://github.com/pponec/
 
 import javax.tools.ToolProvider;
 import java.io.*;
