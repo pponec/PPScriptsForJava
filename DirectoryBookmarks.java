@@ -19,14 +19,13 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.6";
-    private final String storeName = ".directory-bookmarks.csv";
+    private final String appVersion = "1.7.7";
+    private final File storeName;
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
     private final String newLine = System.lineSeparator();
     private final String header = "%s A directory bookmarks for the '%s' script".formatted(comment, appName);
-    private final String homeDir = System.getProperty("user.home");
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
@@ -35,10 +34,13 @@ public class DirectoryBookmarks {
             .formatted(true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
-        new DirectoryBookmarks(System.out).start(args);
+        new DirectoryBookmarks(
+                new File(System.getProperty("user.home"), ".directory-bookmarks.csv"),
+                System.out).start(args);
     }
 
-    protected DirectoryBookmarks(PrintStream out) {
+    protected DirectoryBookmarks(File storeName, PrintStream out) {
+        this.storeName = storeName;
         this.out = out;
     }
 
@@ -116,7 +118,7 @@ public class DirectoryBookmarks {
     }
 
     private void printDirectories() throws IOException {
-        var storeFile = getStoreFile();
+        var storeFile = createStoreFile();
         try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
@@ -133,14 +135,12 @@ public class DirectoryBookmarks {
      */
     private String getDirectory(String key, String defaultDir) {
         switch (key) {
-            case "~":
-                return homeDir;
             case currentDirMark:
                 return currentDir;
             default:
                 var idx = key.indexOf(dirSeparator);
                 var extKey = (idx >= 0 ? key.substring(0, idx) : key) + cellSeparator;
-                var storeFile = getStoreFile();
+                var storeFile = createStoreFile();
                 try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
                     var dir = reader.lines()
                             .filter(line -> !line.startsWith(String.valueOf(comment)))
@@ -177,7 +177,7 @@ public class DirectoryBookmarks {
         }
         var extendedKey = key + cellSeparator;
         var tempFile = getStoreFileTemplate();
-        var storeFile = getStoreFile();
+        var storeFile = createStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.write(header);
             writer.write(newLine);
@@ -209,20 +209,19 @@ public class DirectoryBookmarks {
         Files.move(tempFile.toPath(), storeFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
-    private File getStoreFile() {
-        var result = new File(homeDir, storeName);
-        if (!result.isFile()) {
+    private File createStoreFile() {
+        if (!storeName.isFile()) {
             try {
-                result.createNewFile();
+                storeName.createNewFile();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        return result;
+        return storeName;
     }
 
     private File getStoreFileTemplate() throws IOException {
-        return File.createTempFile("storeName", "", new File(homeDir));
+        return File.createTempFile("storeName", "", storeName.getParentFile());
     }
 
     private void fixMarksOfMissingDirectories() throws IOException {
@@ -245,7 +244,7 @@ public class DirectoryBookmarks {
 
     private List<String> getAllSortedKeys() throws IOException {
         var result = Collections.<String>emptyList();
-        try (BufferedReader reader = new BufferedReader(new FileReader(getStoreFile()))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(createStoreFile()))) {
             result = reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
