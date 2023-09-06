@@ -67,9 +67,9 @@ public class DirectoryBookmarks {
                     printHelpAndExit();
                 delete(args[1]);
             }
-            case 'k'-> {
+            case 'b'-> {
                 var dir = args.length > 1 ? args[1] : currentDir;
-                printAllKeysForDirectory(dir);
+                printAllBookmarksOfDirectory(dir);
             }
             case 'i'-> {
                 printInstall();
@@ -82,7 +82,7 @@ public class DirectoryBookmarks {
             }
             case 'u' -> { // update
                 download();
-                if (isJar()) {
+                if (isJar() && !isSystemWindows()) {
                     compile();
                     out.printf("Version %s was downloaded and compiled%n", appVersion);
                 } else {
@@ -112,7 +112,7 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s -[lsdkfcu] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s -[lsdbfuc] bookmark directory optionalComment%n", javaExe);
         out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
@@ -254,7 +254,7 @@ public class DirectoryBookmarks {
         return result;
     }
 
-    private void printAllKeysForDirectory(String directory) throws IOException {
+    private void printAllBookmarksOfDirectory(String directory) throws IOException {
         getAllSortedKeys().forEach(key -> {
             if (directory.equals(getDirectory(key, ""))) {
                 out.println(key);
