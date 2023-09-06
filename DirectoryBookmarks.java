@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.7";
+    private final String appVersion = "1.7.8";
     private final File storeName;
     private final PrintStream out;
     private final char cellSeparator = '\t';
@@ -31,7 +31,7 @@ public class DirectoryBookmarks {
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
-            .formatted(true ? "main" : "development", appName);
+            .formatted(!true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(
@@ -153,9 +153,9 @@ public class DirectoryBookmarks {
                         var commentMatcher = commentPattern.matcher(dirString);
                         var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
                         return (commentMatcher.find()
-                                 ? dirString.substring(0, commentMatcher.start())
-                                 : dirString)
-                                 + endDir;
+                                ? dirString.substring(0, commentMatcher.start())
+                                : dirString)
+                                + endDir;
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -294,22 +294,21 @@ public class DirectoryBookmarks {
 
     private void printInstall() {
         var exePath = getPathOfRunningApplication();
-        var javaExe = "%s\\bin\\java".formatted(System.getProperty("java.home"));
-        var applExe = isJar()
-                ? "%s -jar %s".formatted(javaExe, exePath)
-                : "%s %s".formatted(javaExe, exePath);
+        var javaHome = System.getProperty("java.home");
         if (isSystemWindows()) {
+            var exe = "\"%s\\bin\\java\" %s\"%s\"".formatted(javaHome, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
-                    , "function directoryBookmarks { %s $args }".formatted(javaExe.replace('/', '\\'))
+                    , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -r $args) }"
                     , "function sdf { directoryBookmarks -s . $args }"
                     , "function ldf { directoryBookmarks -r $args }");
             out.println(msg);
         } else {
+            var exe = "\"%s/bin/java\" %s\"%s\"".formatted(javaHome, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
-                    , "alias directoryBookmarks='%s'".formatted(applExe)
+                    , "alias directoryBookmarks='%s'".formatted(exe)
                     , "cdf() { cd \"$(directoryBookmarks -r \"$1\")\"; }"
                     , "sdf() { directoryBookmarks -s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks -l \"$1\"; }");
