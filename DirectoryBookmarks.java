@@ -48,7 +48,7 @@ public class DirectoryBookmarks {
     public void start(String... args) throws Exception {
         if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
         switch (args[0].charAt(args[0].length() - 1)) { // get the last character
-            case 'l', 'r' -> { // list all directories or find one directory
+            case 'l' -> { // list all directories or find one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
                     out.println(dir);
@@ -62,10 +62,10 @@ public class DirectoryBookmarks {
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
-            case 'd' -> {
+            case 'r' -> {
                 if (args.length < 2)
                     printHelpAndExit();
-                delete(args[1]);
+                removeBookmark(args[1]);
             }
             case 'b'-> {
                 var dir = args.length > 1 ? args[1] : currentDir;
@@ -112,7 +112,7 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         var bashrc = "~/.bashrc";
         out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s -[lsdbfuc] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
         out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
         System.exit(1);
     }
@@ -164,7 +164,7 @@ public class DirectoryBookmarks {
         }
     }
 
-    private void delete(String key) throws IOException {
+    private void removeBookmark(String key) throws IOException {
         save(key, "");
     }
 
@@ -235,7 +235,7 @@ public class DirectoryBookmarks {
                     try {
                         var msg = "Removed: %s\t%s".formatted(key, getDirectory(key, "?"));
                         out.println(msg);
-                        delete(key);
+                        removeBookmark(key);
                     } catch (IOException e) {
                         throw new IllegalStateException(e);
                     }
@@ -300,18 +300,18 @@ public class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
-                    , "function cdf { Set-Location -Path $(directoryBookmarks -r $args) }"
-                    , "function sdf { directoryBookmarks -s . $args }"
-                    , "function ldf { directoryBookmarks -r $args }");
+                    , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
+                    , "function sdf { directoryBookmarks s . $args }"
+                    , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
             var exe = "\"%s/bin/java\" %s\"%s\"".formatted(javaHome, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
-                    , "cdf() { cd \"$(directoryBookmarks -r \"$1\")\"; }"
-                    , "sdf() { directoryBookmarks -s %s \"$@\"; }".formatted(currentDirMark)
-                    , "ldf() { directoryBookmarks -l \"$1\"; }");
+                    , "cdf() { cd \"$(directoryBookmarks l \"$1\")\"; }"
+                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
+                    , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
         }
     }
