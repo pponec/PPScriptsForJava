@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.8";
+    private final String appVersion = "1.7.9";
     private final File storeName;
     private final PrintStream out;
     private final char cellSeparator = '\t';
@@ -309,7 +309,7 @@ public class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
-                    , "cdf() { cd \"$(directoryBookmarks l \"$1\")\"; }"
+                    , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
                     , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
