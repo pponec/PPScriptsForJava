@@ -163,7 +163,7 @@ public class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save(key, "");
+        save("", key);
     }
 
     private void save(String dir, String key, String... comments) throws IOException {
