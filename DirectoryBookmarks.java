@@ -31,7 +31,7 @@ public class DirectoryBookmarks {
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
-            .formatted(!true ? "main" : "development", appName);
+            .formatted(true ? "main" : "development", appName);
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(
