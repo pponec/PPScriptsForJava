@@ -36,10 +36,11 @@ Next, I will present a description of selected commands for the character termin
 * `java -jar DirectoryBookmarks.jar i` : (Integrate) - A slightly different initialization is generated for the JAR version of the program.
 * `java DirectoryBookmarks.java` : Running without an execute command prints the current version and a full list of available parameters.
 
-The application has been released under the Apache License, Version 2.0 and requires a Java 17 or higher environment to run. 
-I have found a similar tool on the Internet, but unfortunately it has not been ported for Windows. 
+The application has been released under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) and requires Java 17 or higher to run. 
+I have found similar tools on the Github, but they either didn't fit my idea or were not ported for Windows. 
 
 ## Similar projects:
 
 * https://github.com/C-Hess/cd-bookmark
+* https://github.com/huyng/bashmarks
 * https://github.com/wting/autojump/wiki
