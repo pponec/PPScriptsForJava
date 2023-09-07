@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.8";
+    private final String appVersion = "1.7.9";
     private final File storeName;
     private final PrintStream out;
     private final char cellSeparator = '\t';
@@ -57,14 +57,12 @@ public class DirectoryBookmarks {
                 }
             }
             case 's' -> {
-                if (args.length < 3)
-                    printHelpAndExit();
+                if (args.length < 3) printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
             case 'r' -> {
-                if (args.length < 2)
-                    printHelpAndExit();
+                if (args.length < 2) printHelpAndExit();
                 removeBookmark(args[1]);
             }
             case 'b'-> {
@@ -165,7 +163,7 @@ public class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save(key, "");
+        save("", key);
     }
 
     private void save(String dir, String key, String... comments) throws IOException {
@@ -309,7 +307,7 @@ public class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
-                    , "cdf() { cd \"$(directoryBookmarks l \"$1\")\"; }"
+                    , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
                     , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
