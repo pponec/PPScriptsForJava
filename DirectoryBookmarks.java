@@ -57,14 +57,12 @@ public class DirectoryBookmarks {
                 }
             }
             case 's' -> {
-                if (args.length < 3)
-                    printHelpAndExit();
+                if (args.length < 3) printHelpAndExit();
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
             case 'r' -> {
-                if (args.length < 2)
-                    printHelpAndExit();
+                if (args.length < 2) printHelpAndExit();
                 removeBookmark(args[1]);
             }
             case 'b'-> {
