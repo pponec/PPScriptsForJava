@@ -1,7 +1,7 @@
 # DirectoryBookmarks.java
 
 Do you often switch between different directories of the file system in the character terminal? 
-Then you might find the application described in this article useful.
+Then you might find the application described in this project useful.
 How does it work? 
 In the currently visited directory you can type (in the terminal) the command `sdf d1`, where the parameter `d1` is an alphanumeric text representing the name of the bookmark.
 From that point on, the same directory can be returned to at any later time with the `cdf d1` command. 
