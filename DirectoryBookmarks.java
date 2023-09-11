@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.0";
+    private final String appVersion = "1.8.1";
     private final File storeName;
     private final PrintStream out;
     private final char cellSeparator = '\t';
@@ -96,7 +96,7 @@ public class DirectoryBookmarks {
                 }
             }
             default -> {
-                out.printf("Arguments are not supported: %s%n", String.join(" ", args));
+                out.printf("Arguments are not supported: %s", String.join(" ", args));
                 printHelpAndExit();
             }
         }
@@ -177,17 +177,16 @@ public class DirectoryBookmarks {
         var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
-            writer.write(header);
-            writer.write(newLine);
+            writer.append(header).append(newLine);
             if (!dir.isEmpty()) {
-                writer.write(key + cellSeparator + dir);
+                writer.append(key).append(cellSeparator).append(dir);
                 if (comments.length > 0) {
-                    writer.write("" + cellSeparator + comment);
+                    writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
-                        writer.append(" ").append(comment);
+                        writer.append(' ').append(comment);
                     }
                 }
-                writer.write(newLine);
+                writer.append(newLine);
             }
             try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
                 reader.lines()
@@ -196,8 +195,7 @@ public class DirectoryBookmarks {
                         .sorted()
                         .forEach(line -> {
                             try {
-                                writer.write(line);
-                                writer.write(newLine);
+                                writer.append(line).append(newLine);
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
