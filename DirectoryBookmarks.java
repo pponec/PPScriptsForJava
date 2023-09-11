@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.7.9";
+    private final String appVersion = "1.8.0";
     private final File storeName;
     private final PrintStream out;
     private final char cellSeparator = '\t';
@@ -199,7 +199,7 @@ public class DirectoryBookmarks {
                                 writer.write(line);
                                 writer.write(newLine);
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                throw new RuntimeException(e);
                             }
                         });
             }
