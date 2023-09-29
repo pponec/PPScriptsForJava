@@ -19,9 +19,8 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.1";
-    private final File storeName;
-    private final PrintStream out;
+    private final String appVersion = "1.8.2";
+    private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
@@ -32,6 +31,8 @@ public class DirectoryBookmarks {
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(!true ? "main" : "development", appName);
+    private final File storeName;
+    private final PrintStream out;
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(
@@ -292,7 +293,8 @@ public class DirectoryBookmarks {
         var exePath = getPathOfRunningApplication();
         var javaHome = System.getProperty("java.home");
         if (isSystemWindows()) {
-            var exe = "\"%s\\bin\\java\" %s\"%s\"".formatted(javaHome, isJar() ? "-jar " : "", exePath);
+            var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
+                    .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
@@ -301,7 +303,8 @@ public class DirectoryBookmarks {
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
-            var exe = "\"%s/bin/java\" %s\"%s\"".formatted(javaHome, isJar() ? "-jar " : "", exePath);
+            var exe = "\"%s/bin/java\" --limit-modules %s %s\"%s\""
+                    .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
