@@ -14,7 +14,7 @@ sourceUrl=https://raw.githubusercontent.com/pponec/$appName/main/$appName.java
 javaExe=$(getJavaExe)
 
 $javaExe --version
-wget -O $appName.java sourceUrl
+wget -O $appName.java $sourceUrl
 $javaExe $appName.java c
 $javaExe -jar $appName.jar i >> ~/.bashrc
 
