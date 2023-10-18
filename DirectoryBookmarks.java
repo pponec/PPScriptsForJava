@@ -19,7 +19,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.2";
+    private final String appVersion = "1.8.3";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -299,7 +299,7 @@ public class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
-                    , "function sdf { directoryBookmarks s . $args }"
+                    , "function sdf { directoryBookmarks s . @args }"
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
