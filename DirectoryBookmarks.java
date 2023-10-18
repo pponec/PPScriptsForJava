@@ -109,10 +109,15 @@ public class DirectoryBookmarks {
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
-        var bashrc = "~/.bashrc";
         out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
         out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
-        out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, bashrc, bashrc);
+        if (isSystemWindows()) {
+            var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
+            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile, initFile);
+        } else {
+            var initFile = "~/.bashrc";
+            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
+        }
         System.exit(1);
     }
 
