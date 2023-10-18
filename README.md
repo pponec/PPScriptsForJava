@@ -52,6 +52,26 @@ The JAR version then needs to be run with a slightly different command, see belo
 The application has been released under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) and requires Java 17 or higher to run.
 I have already found similar tools on the Internet, but they either did not meet my expectations or were not portable to Windows.
 
+## How to integrate the application
+
+1. Install Java17+.
+2. Download the file [DirectoryBookmarks.java](https://raw.githubusercontent.com/pponec/DirectoryBookmarks/main/DirectoryBookmarks.java) to a local directory 
+3. Open a character terminal and run commands depending on the operating system.
+
+### For the Ubuntu:
+
+1. `java DirectoryBookmarks.java c`
+2. `java -jar DirectoryBookmarks.jar i >> ~/.bashrc`
+3. Re-open the terminal emulator.
+
+### For the Windows:
+
+1. `mkdir $HOME\Documents\WindowsPowerShell`
+2. `java DirectoryBookmarks.java c`
+3. `java -jar DirectoryBookmarks.jar i >> $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`
+4. `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted`
+5. Re-open the PowerShell console.
+
 ## Similar projects:
 
 * https://github.com/C-Hess/cd-bookmark
