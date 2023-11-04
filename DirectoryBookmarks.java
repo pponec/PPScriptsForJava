@@ -19,13 +19,13 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.3";
+    private final String appVersion = "1.8.4";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
     private final String newLine = System.lineSeparator();
-    private final String header = "%s A directory bookmarks for the '%s' script".formatted(comment, appName);
+    private final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
     private final Class<?> mainClass = getClass();
@@ -109,7 +109,7 @@ public class DirectoryBookmarks {
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
-        out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
+        out.printf("%s %s (%s)%n", appName, appVersion, homePage);
         out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
         if (isSystemWindows()) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
@@ -183,7 +183,7 @@ public class DirectoryBookmarks {
         var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
-            writer.append(header).append(newLine);
+            writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
                 writer.append(key).append(cellSeparator).append(dir);
                 if (comments.length > 0) {
