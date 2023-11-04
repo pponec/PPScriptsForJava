@@ -20,7 +20,7 @@ public class DirectoryBookmarks {
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
     private final String appVersion = "1.8.4";
-    private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler";
+    private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
@@ -81,12 +81,8 @@ public class DirectoryBookmarks {
             }
             case 'u' -> { // update
                 download();
-                if (isJar() && !isSystemWindows()) {
-                    compile();
-                    out.printf("Version %s was downloaded and compiled%n", appVersion);
-                } else {
-                    out.printf("Version %s was downloaded%n", appVersion);
-                }
+                out.printf("%s %s was downloaded. The following compilation is recommended.%n",
+                        appName, appVersion);
             }
             case 'v'-> {
                 var scriptVersion = getScriptVersion();
@@ -324,6 +320,11 @@ public class DirectoryBookmarks {
 
     /** Compile the script and build it to the executable JAR file */
     private void compile() throws Exception {
+        if  (isJar()) {
+            out.println("Use the statement rather: java %s.java c".formatted(appName));
+            System.exit(1);
+        }
+
         var scriptDir = getScriptDir();
         var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
         var jarFile = "%s.jar".formatted(appName);
