@@ -309,7 +309,7 @@ public class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
-                    , "function sdf { directoryBookmarks s . @args }"
+                    , "function sdf { directoryBookmarks s %s @args }".formatted(currentDirMark)
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
@@ -319,7 +319,7 @@ public class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
                     , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
-                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
+                    , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
         }
