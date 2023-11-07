@@ -16,10 +16,11 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class DirectoryBookmarks {
+    private static final String USER_HOME = System.getProperty("user.home");
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.4";
+    private final String appVersion = "1.8.5";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -28,6 +29,8 @@ public class DirectoryBookmarks {
     private final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
+    /** Shortcut for a home directory. Empty text is ignored. */
+    private final String homeDirMark = "~";
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
             .formatted(!true ? "main" : "development", appName);
@@ -36,7 +39,7 @@ public class DirectoryBookmarks {
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(
-                new File(System.getProperty("user.home"), ".directory-bookmarks.csv"),
+                new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out).start(args);
     }
 
@@ -152,10 +155,13 @@ public class DirectoryBookmarks {
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
                         var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
-                        return (commentMatcher.find()
+                        var result = (commentMatcher.find()
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
                                 + endDir;
+                        return !homeDirMark.isEmpty() && result.startsWith(homeDirMark)
+                                ? USER_HOME + result.substring(homeDirMark.length())
+                                : result;
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -174,6 +180,9 @@ public class DirectoryBookmarks {
         }
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
+        }
+        if (dir.startsWith(USER_HOME) && !homeDirMark.isEmpty()) {
+            dir = homeDirMark + dir.substring(USER_HOME.length());
         }
         var extendedKey = key + cellSeparator;
         var tempFile = getTempStoreFile();
@@ -300,7 +309,7 @@ public class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
-                    , "function sdf { directoryBookmarks s . @args }"
+                    , "function sdf { directoryBookmarks s %s @args }".formatted(currentDirMark)
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
@@ -310,7 +319,7 @@ public class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
                     , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
-                    , "sdf() { directoryBookmarks s %s \"$@\"; }".formatted(currentDirMark)
+                    , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
         }
