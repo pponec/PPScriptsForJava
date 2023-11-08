@@ -29,18 +29,17 @@ public class DirectoryBookmarks {
     private final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
     private final String currentDir = System.getProperty("user.dir");
     private final String currentDirMark = ".";
-    /** Shortcut for a home directory. Empty value is ignored. */
+    /** Shortcut for a home directory. Empty text is ignored. */
     private final String homeDirMark = "~";
     private final Class<?> mainClass = getClass();
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/%s.java"
-            .formatted(true ? "main" : "development", appName);
+            .formatted(!true ? "main" : "development", appName);
     private final File storeName;
     private final PrintStream out;
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(
-                new File(USER_HOME, ".directory-bookmarks.csv"),
-                System.out).start(args);
+                new File(USER_HOME, ".directory-bookmarks.csv"), System.out).start(args);
     }
 
     protected DirectoryBookmarks(File storeName, PrintStream out) {
@@ -52,7 +51,7 @@ public class DirectoryBookmarks {
     public void start(String... args) throws Exception {
         if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
         switch (args[0].charAt(args[0].length() - 1)) { // get the last character
-            case 'l' -> { // list all directories or find one directory
+            case 'l' -> { // list all directories or show one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
                     out.println(dir);
