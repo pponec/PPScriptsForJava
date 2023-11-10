@@ -38,6 +38,7 @@ public final class DirectoryBookmarks {
     private final PrintStream out;
     private final PrintStream err;
     private final boolean exitByException;
+    private final boolean isSystemWindows;
 
     public static void main(String[] args) throws Exception {
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
@@ -50,6 +51,7 @@ public final class DirectoryBookmarks {
         this.out = out;
         this.err = err;
         this.exitByException = exitByException;
+        this.isSystemWindows = isSystemMsWindows();
     }
 
     /** The main object method */
@@ -124,7 +126,7 @@ public final class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
         out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
-        if (isSystemWindows()) {
+        if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
             out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile, initFile);
         } else {
@@ -330,7 +332,7 @@ public final class DirectoryBookmarks {
     private void printInstall() {
         var exePath = getPathOfRunningApplication();
         var javaHome = System.getProperty("java.home");
-        if (isSystemWindows()) {
+        if (isSystemWindows) {
             var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
                     .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
@@ -409,7 +411,7 @@ public final class DirectoryBookmarks {
         try {
             final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
             var result = location.toString();
-            if (isSystemWindows() && result.startsWith(protocol)) {
+            if (isSystemWindows && result.startsWith(protocol)) {
                 result = result.substring(protocol.length());
             } else {
                 result = location.getPath();
@@ -420,7 +422,7 @@ public final class DirectoryBookmarks {
         }
     }
 
-    private boolean isSystemWindows() {
+    private boolean isSystemMsWindows() {
         return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
     }
 }
