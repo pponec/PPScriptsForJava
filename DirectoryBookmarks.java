@@ -20,7 +20,7 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.6";
+    private final String appVersion = "1.8.7";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -156,6 +156,7 @@ public final class DirectoryBookmarks {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
+                    .map(line -> isSystemWindows ? line.replace('/', '\\') : line)
                     .forEach(out::println);
         }
     }
@@ -189,9 +190,7 @@ public final class DirectoryBookmarks {
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
                                 + endDir;
-                        return !homeDirMark.isEmpty() && result.startsWith(homeDirMark)
-                                ? USER_HOME + result.substring(homeDirMark.length())
-                                : result;
+                        return convertDir(false, result);
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -211,16 +210,13 @@ public final class DirectoryBookmarks {
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
         }
-        if (dir.startsWith(USER_HOME) && !homeDirMark.isEmpty()) {
-            dir = homeDirMark + dir.substring(USER_HOME.length());
-        }
         var extendedKey = key + cellSeparator;
         var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
-                writer.append(key).append(cellSeparator).append(dir);
+                writer.append(key).append(cellSeparator).append(convertDir(true, dir));
                 if (comments.length > 0) {
                     writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
@@ -352,6 +348,26 @@ public final class DirectoryBookmarks {
                     , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
                     , "ldf() { directoryBookmarks l \"$1\"; }");
             out.println(msg);
+        }
+    }
+
+    /** Convert a directory text to the store format or back */
+    private String convertDir(boolean toStoreFormat, String dir) {
+        final var homeDirMarkEnabled = !homeDirMark.isEmpty();
+        if (toStoreFormat) {
+            var result = homeDirMarkEnabled && dir.startsWith(USER_HOME)
+                    ? homeDirMark + dir.substring(USER_HOME.length())
+                    : dir;
+            return isSystemWindows
+                    ? result.replace('\\', '/')
+                    : result;
+        } else {
+            var result = isSystemWindows
+                    ? dir.replace('/', '\\')
+                    : dir;
+            return homeDirMarkEnabled && result.startsWith(homeDirMark)
+                    ? USER_HOME + result.substring(homeDirMark.length())
+                    : result;
         }
     }
 
