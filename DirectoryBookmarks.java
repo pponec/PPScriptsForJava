@@ -15,7 +15,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class DirectoryBookmarks {
+public final class DirectoryBookmarks {
     private static final String USER_HOME = System.getProperty("user.home");
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
@@ -61,7 +61,7 @@ public class DirectoryBookmarks {
                     var defaultDir = "Bookmark [%s] has no directory.".formatted(args[1]);
                     var dir = getDirectory(args[1], defaultDir);
                     if (dir == defaultDir) {
-                        exit(1, dir);
+                        exit(-1, dir);
                     } else {
                         out.println(dir);
                     }
@@ -70,12 +70,12 @@ public class DirectoryBookmarks {
                 }
             }
             case 's' -> {
-                if (args.length < 3) printHelpAndExit(1);
+                if (args.length < 3) printHelpAndExit(-1);
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
             case 'r' -> {
-                if (args.length < 2) printHelpAndExit(1);
+                if (args.length < 2) printHelpAndExit(-1);
                 removeBookmark(args[1]);
             }
             case 'b'-> {
@@ -106,14 +106,14 @@ public class DirectoryBookmarks {
             }
             default -> {
                 out.printf("Arguments are not supported: %s", String.join(" ", args));
-                printHelpAndExit(1);
+                printHelpAndExit(-1);
             }
         }
     }
 
     /**
      * Print a default help and exit the application.
-     * @param status The zero value signs a correct terminate.
+     * @param status The positive value signs a correct terminate.
      */
     private void printHelpAndExit(int status) {
         var out = status == 0 ? this.out : this.err;
@@ -134,15 +134,17 @@ public class DirectoryBookmarks {
         exit(status);
     }
 
-    /** Exit the application */
+    /** Exit the application
+     * @param status The positive value signs a correct terminate.
+     */
     private void exit(int status, String... messageLines) {
         var msg = String.join(newLine, messageLines);
-        if (exitByException && status != 0) {
+        if (exitByException && status < 0) {
             throw new UnsupportedOperationException(msg);
         } else {
             var out = status == 0 ? this.out : this.err;
             out.println(msg);
-            System.exit(status);
+            System.exit(0 - status);
         }
     }
 
@@ -202,7 +204,7 @@ public class DirectoryBookmarks {
 
     private void save(String dir, String key, String... comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
-            exit(1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
+            exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
@@ -356,7 +358,7 @@ public class DirectoryBookmarks {
     /** Compile the script and build it to the executable JAR file */
     private void compile() throws Exception {
         if  (isJar()) {
-            exit(1, "Use the statement rather: java %s.java c".formatted(appName));
+            exit(-1, "Use the statement rather: java %s.java c".formatted(appName));
         }
 
         var scriptDir = getScriptDir();
