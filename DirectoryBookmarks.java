@@ -20,7 +20,7 @@ public class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.5";
+    private final String appVersion = "1.8.6";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -36,36 +36,46 @@ public class DirectoryBookmarks {
             .formatted(!true ? "main" : "development", appName);
     private final File storeName;
     private final PrintStream out;
+    private final PrintStream err;
+    private final boolean exitByException;
 
     public static void main(String[] args) throws Exception {
-        new DirectoryBookmarks(
-                new File(USER_HOME, ".directory-bookmarks.csv"), System.out).start(args);
+        new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
+                System.out,
+                System.err, false).start(args);
     }
 
-    protected DirectoryBookmarks(File storeName, PrintStream out) {
+    protected DirectoryBookmarks(File storeName, PrintStream out, PrintStream err, boolean exitByException) {
         this.storeName = storeName;
         this.out = out;
+        this.err = err;
+        this.exitByException = exitByException;
     }
 
     /** The main object method */
     public void start(String... args) throws Exception {
-        if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
+        if (args.length == 0 || args[0].isEmpty()) printHelpAndExit(0);
         switch (args[0].charAt(args[0].length() - 1)) { // get the last character
             case 'l' -> { // list all directories or show one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
-                    var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
-                    out.println(dir);
+                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args[1]);
+                    var dir = getDirectory(args[1], defaultDir);
+                    if (dir == defaultDir) {
+                        exit(1, dir);
+                    } else {
+                        out.println(dir);
+                    }
                 } else {
                     printDirectories();
                 }
             }
             case 's' -> {
-                if (args.length < 3) printHelpAndExit();
+                if (args.length < 3) printHelpAndExit(1);
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
             case 'r' -> {
-                if (args.length < 2) printHelpAndExit();
+                if (args.length < 2) printHelpAndExit(1);
                 removeBookmark(args[1]);
             }
             case 'b'-> {
@@ -96,12 +106,17 @@ public class DirectoryBookmarks {
             }
             default -> {
                 out.printf("Arguments are not supported: %s", String.join(" ", args));
-                printHelpAndExit();
+                printHelpAndExit(1);
             }
         }
     }
 
-    private void printHelpAndExit() {
+    /**
+     * Print a default help and exit the application.
+     * @param status The zero value signs a correct terminate.
+     */
+    private void printHelpAndExit(int status) {
+        var out = status == 0 ? this.out : this.err;
         var isJar = isJar();
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
@@ -116,7 +131,19 @@ public class DirectoryBookmarks {
             var initFile = "~/.bashrc";
             out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
         }
-        System.exit(1);
+        exit(status);
+    }
+
+    /** Exit the application */
+    private void exit(int status, String... messageLines) {
+        var msg = String.join(newLine, messageLines);
+        if (exitByException && status != 0) {
+            throw new UnsupportedOperationException(msg);
+        } else {
+            var out = status == 0 ? this.out : this.err;
+            out.println(msg);
+            System.exit(status);
+        }
     }
 
     private void printDirectories() throws IOException {
@@ -175,7 +202,7 @@ public class DirectoryBookmarks {
 
     private void save(String dir, String key, String... comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
-            throw new IllegalArgumentException("the key contains a tab or a slash");
+            exit(1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
@@ -329,8 +356,7 @@ public class DirectoryBookmarks {
     /** Compile the script and build it to the executable JAR file */
     private void compile() throws Exception {
         if  (isJar()) {
-            out.println("Use the statement rather: java %s.java c".formatted(appName));
-            System.exit(1);
+            exit(1, "Use the statement rather: java %s.java c".formatted(appName));
         }
 
         var scriptDir = getScriptDir();
