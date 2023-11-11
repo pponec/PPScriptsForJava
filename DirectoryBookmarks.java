@@ -15,12 +15,12 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class DirectoryBookmarks {
+public final class DirectoryBookmarks {
     private static final String USER_HOME = System.getProperty("user.home");
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.5";
+    private final String appVersion = "1.8.7";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -36,72 +36,90 @@ public class DirectoryBookmarks {
             .formatted(true ? "main" : "development", appName);
     private final File storeName;
     private final PrintStream out;
+    private final PrintStream err;
+    private final boolean exitByException;
+    private final boolean isSystemWindows;
 
     public static void main(String[] args) throws Exception {
-        new DirectoryBookmarks(
-                new File(USER_HOME, ".directory-bookmarks.csv"), System.out).start(args);
+        new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
+                System.out,
+                System.err, false).start(args);
     }
 
-    protected DirectoryBookmarks(File storeName, PrintStream out) {
+    protected DirectoryBookmarks(File storeName, PrintStream out, PrintStream err, boolean exitByException) {
         this.storeName = storeName;
         this.out = out;
+        this.err = err;
+        this.exitByException = exitByException;
+        this.isSystemWindows = isSystemMsWindows();
     }
 
     /** The main object method */
     public void start(String... args) throws Exception {
-        if (args.length == 0 || args[0].isEmpty()) printHelpAndExit();
-        switch (args[0].charAt(args[0].length() - 1)) { // get the last character
-            case 'l' -> { // list all directories or show one directory
+        final var statement = args.length == 0 ? "" : args[0];
+        if (statement.isEmpty()) printHelpAndExit(0);
+        switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
+            case "l", "list" -> { // list all directories or show the one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
-                    var dir = getDirectory(args[1], " %s [bookmark] ".formatted(args[1]));
-                    out.println(dir);
+                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args[1]);
+                    var dir = getDirectory(args[1], defaultDir);
+                    if (dir == defaultDir) {
+                        exit(-1, defaultDir);
+                    } else {
+                        out.println(dir);
+                    }
                 } else {
                     printDirectories();
                 }
             }
-            case 's' -> {
-                if (args.length < 3) printHelpAndExit();
+            case "s", "save" -> {
+                if (args.length < 3) printHelpAndExit(-1);
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
-            case 'r' -> {
-                if (args.length < 2) printHelpAndExit();
+            case "r", "read" -> {
+                if (args.length < 2) printHelpAndExit(-1);
                 removeBookmark(args[1]);
             }
-            case 'b'-> {
+            case "b", "bookmarks"-> {
                 var dir = args.length > 1 ? args[1] : currentDir;
                 printAllBookmarksOfDirectory(dir);
             }
-            case 'i'-> {
+            case "i", "install"-> {
                 printInstall();
             }
-            case 'f'-> {
+            case "f", "fix"-> {
                 fixMarksOfMissingDirectories();
             }
-            case 'c' -> {
+            case "c", "compile" -> {
                 compile();
             }
-            case 'u' -> { // update
+            case "u", "upgrade" -> { // update
                 download();
                 out.printf("%s %s was downloaded. The following compilation is recommended.%n",
-                        appName, appVersion);
+                        appName, getScriptVersion());
             }
-            case 'v'-> {
+            case "v", "version"-> {
                 var scriptVersion = getScriptVersion();
                 if (appVersion.equals(scriptVersion)) {
-                    out.println(getScriptVersion());
+                    out.println(scriptVersion);
                 } else {
-                    out.printf("%s -> %s".formatted(scriptVersion, appVersion));
+                    out.printf("%s -> %s%n".formatted(scriptVersion, appVersion));
                 }
             }
             default -> {
                 out.printf("Arguments are not supported: %s", String.join(" ", args));
-                printHelpAndExit();
+                printHelpAndExit(-1);
             }
         }
     }
 
-    private void printHelpAndExit() {
+    /**
+     * Print a default help and exit the application.
+     * @param status The positive value signs a correct terminate.
+     */
+    private void printHelpAndExit(int status) {
+        var out = status == 0 ? this.out : this.err;
         var isJar = isJar();
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
@@ -109,14 +127,28 @@ public class DirectoryBookmarks {
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
         out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
-        if (isSystemWindows()) {
+        if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
-            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile, initFile);
+            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
         } else {
             var initFile = "~/.bashrc";
             out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
         }
-        System.exit(1);
+        exit(status);
+    }
+
+    /** Exit the application
+     * @param status The positive value signs a correct terminate.
+     */
+    private void exit(int status, String... messageLines) {
+        final var msg = String.join(newLine, messageLines);
+        if (exitByException && status < 0) {
+            throw new UnsupportedOperationException(msg);
+        } else {
+            final var output = status >= 0 ? this.out : this.err;
+            output.println(msg);
+            System.exit(status);
+        }
     }
 
     private void printDirectories() throws IOException {
@@ -125,6 +157,7 @@ public class DirectoryBookmarks {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
+                    .map(line -> isSystemWindows ? line.replace('/', '\\') : line)
                     .forEach(out::println);
         }
     }
@@ -153,14 +186,12 @@ public class DirectoryBookmarks {
                         var dirString = dir.get();
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
-                        var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
+                        var endDir = idx >= 0 ? dirSeparator + key.substring(idx + 1) : "";
                         var result = (commentMatcher.find()
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
                                 + endDir;
-                        return !homeDirMark.isEmpty() && result.startsWith(homeDirMark)
-                                ? USER_HOME + result.substring(homeDirMark.length())
-                                : result;
+                        return convertDir(false, result);
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -175,13 +206,10 @@ public class DirectoryBookmarks {
 
     private void save(String dir, String key, String... comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
-            throw new IllegalArgumentException("the key contains a tab or a slash");
+            exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
-        }
-        if (dir.startsWith(USER_HOME) && !homeDirMark.isEmpty()) {
-            dir = homeDirMark + dir.substring(USER_HOME.length());
         }
         var extendedKey = key + cellSeparator;
         var tempFile = getTempStoreFile();
@@ -189,7 +217,7 @@ public class DirectoryBookmarks {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
-                writer.append(key).append(cellSeparator).append(dir);
+                writer.append(key).append(cellSeparator).append(convertDir(true, dir));
                 if (comments.length > 0) {
                     writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
@@ -301,14 +329,14 @@ public class DirectoryBookmarks {
     private void printInstall() {
         var exePath = getPathOfRunningApplication();
         var javaHome = System.getProperty("java.home");
-        if (isSystemWindows()) {
+        if (isSystemWindows) {
             var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
                     .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
-                    , "function sdf { directoryBookmarks s %s @args }".formatted(currentDirMark)
+                    , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
@@ -324,13 +352,32 @@ public class DirectoryBookmarks {
         }
     }
 
+    /** Convert a directory text to the store format or back */
+    private String convertDir(boolean toStoreFormat, String dir) {
+        final var homeDirMarkEnabled = !homeDirMark.isEmpty();
+        if (toStoreFormat) {
+            var result = homeDirMarkEnabled && dir.startsWith(USER_HOME)
+                    ? homeDirMark + dir.substring(USER_HOME.length())
+                    : dir;
+            return isSystemWindows
+                    ? result.replace('\\', '/')
+                    : result;
+        } else {
+            var result = isSystemWindows
+                    ? dir.replace('/', '\\')
+                    : dir;
+            return homeDirMarkEnabled && result.startsWith(homeDirMark)
+                    ? USER_HOME + result.substring(homeDirMark.length())
+                    : result;
+        }
+    }
+
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
     /** Compile the script and build it to the executable JAR file */
     private void compile() throws Exception {
         if  (isJar()) {
-            out.println("Use the statement rather: java %s.java c".formatted(appName));
-            System.exit(1);
+            exit(-1, "Use the statement rather: java %s.java c".formatted(appName));
         }
 
         var scriptDir = getScriptDir();
@@ -381,7 +428,7 @@ public class DirectoryBookmarks {
         try {
             final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
             var result = location.toString();
-            if (isSystemWindows() && result.startsWith(protocol)) {
+            if (isSystemWindows && result.startsWith(protocol)) {
                 result = result.substring(protocol.length());
             } else {
                 result = location.getPath();
@@ -392,7 +439,7 @@ public class DirectoryBookmarks {
         }
     }
 
-    private boolean isSystemWindows() {
+    private boolean isSystemMsWindows() {
         return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
     }
 }
