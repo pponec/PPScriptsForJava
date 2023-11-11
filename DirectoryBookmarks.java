@@ -56,14 +56,15 @@ public final class DirectoryBookmarks {
 
     /** The main object method */
     public void start(String... args) throws Exception {
-        if (args.length == 0 || args[0].isEmpty()) printHelpAndExit(0);
-        switch (args[0].charAt(args[0].length() - 1)) { // get the last character
-            case 'l' -> { // list all directories or show one directory
+        final var statement = args.length == 0 ? "" : args[0];
+        if (statement.isEmpty()) printHelpAndExit(0);
+        switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
+            case "l", "list" -> { // list all directories or show the one directory
                 if (args.length > 1 && !args[1].isEmpty()) {
                     var defaultDir = "Bookmark [%s] has no directory.".formatted(args[1]);
                     var dir = getDirectory(args[1], defaultDir);
                     if (dir == defaultDir) {
-                        exit(-1, dir);
+                        exit(-1, defaultDir);
                     } else {
                         out.println(dir);
                     }
@@ -71,39 +72,39 @@ public final class DirectoryBookmarks {
                     printDirectories();
                 }
             }
-            case 's' -> {
+            case "s", "save" -> {
                 if (args.length < 3) printHelpAndExit(-1);
                 var msg = Arrays.copyOfRange(args, 3, args.length);
                 save(args[1], args[2], msg); // (dir, key, comments)
             }
-            case 'r' -> {
+            case "r", "read" -> {
                 if (args.length < 2) printHelpAndExit(-1);
                 removeBookmark(args[1]);
             }
-            case 'b'-> {
+            case "b", "bookmarks"-> {
                 var dir = args.length > 1 ? args[1] : currentDir;
                 printAllBookmarksOfDirectory(dir);
             }
-            case 'i'-> {
+            case "i", "install"-> {
                 printInstall();
             }
-            case 'f'-> {
+            case "f", "fix"-> {
                 fixMarksOfMissingDirectories();
             }
-            case 'c' -> {
+            case "c", "compile" -> {
                 compile();
             }
-            case 'u' -> { // update
+            case "u", "upgrade" -> { // update
                 download();
                 out.printf("%s %s was downloaded. The following compilation is recommended.%n",
-                        appName, appVersion);
+                        appName, getScriptVersion());
             }
-            case 'v'-> {
+            case "v", "version"-> {
                 var scriptVersion = getScriptVersion();
                 if (appVersion.equals(scriptVersion)) {
-                    out.println(getScriptVersion());
+                    out.println(scriptVersion);
                 } else {
-                    out.printf("%s -> %s".formatted(scriptVersion, appVersion));
+                    out.printf("%s -> %s%n".formatted(scriptVersion, appVersion));
                 }
             }
             default -> {
@@ -128,7 +129,7 @@ public final class DirectoryBookmarks {
         out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
-            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile, initFile);
+            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
         } else {
             var initFile = "~/.bashrc";
             out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
@@ -140,13 +141,13 @@ public final class DirectoryBookmarks {
      * @param status The positive value signs a correct terminate.
      */
     private void exit(int status, String... messageLines) {
-        var msg = String.join(newLine, messageLines);
+        final var msg = String.join(newLine, messageLines);
         if (exitByException && status < 0) {
             throw new UnsupportedOperationException(msg);
         } else {
-            var out = status == 0 ? this.out : this.err;
-            out.println(msg);
-            System.exit(0 - status);
+            final var output = status >= 0 ? this.out : this.err;
+            output.println(msg);
+            System.exit(status);
         }
     }
 
@@ -185,7 +186,7 @@ public final class DirectoryBookmarks {
                         var dirString = dir.get();
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
-                        var endDir = idx >= 0 ? "" + dirSeparator + key.substring(idx + 1) : "";
+                        var endDir = idx >= 0 ? dirSeparator + key.substring(idx + 1) : "";
                         var result = (commentMatcher.find()
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
@@ -335,7 +336,7 @@ public final class DirectoryBookmarks {
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
-                    , "function sdf { directoryBookmarks s %s @args }".formatted(currentDirMark)
+                    , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
                     , "function ldf { directoryBookmarks l $args }");
             out.println(msg);
         } else {
