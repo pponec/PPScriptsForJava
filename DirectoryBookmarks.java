@@ -20,7 +20,7 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.7";
+    private final String appVersion = "1.8.8";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char dirSeparator = File.separatorChar;
@@ -337,7 +337,8 @@ public final class DirectoryBookmarks {
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
                     , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
                     , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
-                    , "function ldf { directoryBookmarks l $args }");
+                    , "function ldf { directoryBookmarks l $args }"
+                    , "function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }");
             out.println(msg);
         } else {
             var exe = "\"%s/bin/java\" --limit-modules %s %s\"%s\""
@@ -347,7 +348,8 @@ public final class DirectoryBookmarks {
                     , "alias directoryBookmarks='%s'".formatted(exe)
                     , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
                     , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
-                    , "ldf() { directoryBookmarks l \"$1\"; }");
+                    , "ldf() { directoryBookmarks l \"$1\"; }"
+                    , "cpf() { argCount=$#; cp ${@:1:$((argCount-1))} \"$(ldf ${!argCount})\"; }");
             out.println(msg);
         }
     }
