@@ -27,8 +27,8 @@ Recall them:
 * `ldf` : the name of the command was inspired by the words "List Directories from the File", the command prints a sorted list of all the bookmarks stored in the CSV file, including their directories and comments.
 * `ldf d1` : If we add the bookmark name to the previous command, we get the path of the paired directory. 
   In Linux, this expression can also be used for copying files, for example. 
-  In Linux, the following example copies all java files from the directory labeled d1 to the directory labeled d2: cp `ldf d1`/*.java `ldf d2` .
-* `cpf f1 d1` : copy a file name `f1` (multiple files are allowed) to the target directory marked with the name `d1`.
+  In Linux, the following example copies all java files from the directory labeled d1 to the directory labeled d2: `cp $(ldf d1)/*.java $(ldf d2)`.
+* `cpf f1 d1` : copy a file name `f1` (multiple files are allowed) to the target directory marked with the name `d1`. The function does not perform the copying itself, but delegates it to a standard operating system command.
 
 Performance note: although direct use of a Java class may resemble interpreting a script, compilation is always done in the background. 
 On newer machines, there is a barely noticeable delay, but on older machines such a delay can be distracting. 
