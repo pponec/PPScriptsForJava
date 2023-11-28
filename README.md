@@ -67,13 +67,32 @@ I have already found similar tools on the Internet, but they either did not meet
 2. `java -jar DirectoryBookmarks.jar i >> ~/.bashrc`
 3. Re-open the terminal emulator.
 
-### For the Windows:
+**Note:** The easiest way for Ubuntu is to download and run the installation script [installDirectoryBookmarks.sh](installDirectoryBookmarks.sh).
+
+### For the Windows PowerShell:
 
 1. `mkdir $HOME\Documents\WindowsPowerShell`
 2. `java DirectoryBookmarks.java c`
 3. `java -jar DirectoryBookmarks.jar i >> $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`
 4. `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted`
 5. Re-open the PowerShell console.
+
+### For the Windows Comand Prompt:
+
+1. `mkdir %USERPROFILE%\bin`
+2. `cd %USERPROFILE%\bin`
+3.  Move the file `DirectoryBookmarks.java` to the current directory.
+3. `java DirectoryBookmarks.java c`
+4.  Copy the file [init.bat](windows/init.bat) to the directory `$HOME/bin`. 
+5.  Modify path to Java and remove other unnecessary auxiliary functions.
+
+### For the Windows GitBash (Bash emulator):
+
+1. Follow the instructions for **Command Prompt**.
+2. Instal the **GitBash** from the [project page](https://gitforwindows.org/).
+3. Copy the file [.profile](windows/.profile) to the directory `$HOME`.
+4. Modify path to Java and remove other unnecessary auxiliary functions.
+
 
 ## Similar projects:
 
