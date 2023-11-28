@@ -84,14 +84,15 @@ I have already found similar tools on the Internet, but they either did not meet
 3.  Move the file `DirectoryBookmarks.java` to the current directory.
 3. `java DirectoryBookmarks.java c`
 4.  Copy the file [init.bat](windows/init.bat) to the directory `$HOME/bin`. 
-5.  Modify path to Java and remove other unnecessary auxiliary functions.
+5.  Open `regedit` and follow the instructions in the file header.
+6.  Modify path to Java and optionally remove unnecessary auxiliary functions.
 
 ### For the Windows GitBash (Bash emulator):
 
-1. Follow the instructions for **Command Prompt**.
+1. Follow the instructions (1-4) for **Command Prompt**.
 2. Instal the **GitBash** from the [project page](https://gitforwindows.org/).
 3. Copy the file [.profile](windows/.profile) to the directory `$HOME`.
-4. Modify path to Java and remove other unnecessary auxiliary functions.
+4. Modify path to Java and optionally remove unnecessary auxiliary functions.
 
 
 ## Similar projects:
