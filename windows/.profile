@@ -3,7 +3,7 @@
 # ----------------------------------------------------------
 
 # Shortcuts for DirectoryBookmarks v1.8.5 utilities:
-alias directoryBookmarks='"/c/Program Files/Amazon Corretto/jdk17.0.9_8/bin/java" --limit-modules java.base,java.net.http,jdk.compiler,jdk.crypto.ec -jar "/c/Users/User/bin/DirectoryBookmarks.jar"'
+alias directoryBookmarks='"/c/Program Files/Amazon Corretto/jdk17.0.9_8/bin/java" --limit-modules java.base,java.net.http,jdk.compiler,jdk.crypto.ec -jar "/c/Users/User/bin/DirectoryBookmarks.jar" linux'
 cdf() { cd "$(directoryBookmarks l $1)"; }
 sdf() { directoryBookmarks s "$PWD" "$@"; }
 ldf() { directoryBookmarks l "$1"; }

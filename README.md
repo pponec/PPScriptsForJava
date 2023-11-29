@@ -77,7 +77,7 @@ I have already found similar tools on the Internet, but they either did not meet
 4. `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted`
 5. Re-open the PowerShell console.
 
-### For the Windows Comand Prompt:
+### For the Windows Command Prompt:
 
 1. `mkdir %USERPROFILE%\bin`
 2. `cd %USERPROFILE%\bin`

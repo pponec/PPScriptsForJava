@@ -21,13 +21,13 @@ public class DirectoryBookmarksTest {
 
         var outputStream = new ByteArrayOutputStream();
         try (var printStream = new PrintStream(outputStream, true, charset)) {
-            var instance = new DirectoryBookmarks(file, printStream, System.err, false);
+            var instance = new DirectoryBookmarks(file, printStream, System.err, false, false);
             sdfTest(instance, outputStream);
         }
 
         outputStream = new ByteArrayOutputStream();
         try (var printStream = new PrintStream(outputStream, true, charset)) {
-            var instance = new DirectoryBookmarks(file, printStream, System.err, false);
+            var instance = new DirectoryBookmarks(file, printStream, System.err, false, false);
             ldfTest(instance, outputStream);
         }
     }

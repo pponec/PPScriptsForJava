@@ -20,10 +20,9 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.8.8";
+    private final String appVersion = "1.9.0";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
-    private final char dirSeparator = File.separatorChar;
     private final char comment = '#';
     private final String newLine = System.lineSeparator();
     private final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
@@ -39,19 +38,29 @@ public final class DirectoryBookmarks {
     private final PrintStream err;
     private final boolean exitByException;
     private final boolean isSystemWindows;
+    private final char dirSeparator;
 
     public static void main(String[] args) throws Exception {
+        boolean enforcedLinux = args.length >=1 && "linux".equals(args[0]);
+        if (enforcedLinux) {
+            args = Arrays.copyOfRange(args, 1, args.length);
+        }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
-                System.err, false).start(args);
+                System.err, enforcedLinux, false).start(args);
     }
 
-    protected DirectoryBookmarks(File storeName, PrintStream out, PrintStream err, boolean exitByException) {
+    protected DirectoryBookmarks(File storeName,
+                                 PrintStream out,
+                                 PrintStream err,
+                                 boolean enforcedLinux,
+                                 boolean exitByException) {
         this.storeName = storeName;
         this.out = out;
         this.err = err;
         this.exitByException = exitByException;
-        this.isSystemWindows = isSystemMsWindows();
+        this.isSystemWindows = !enforcedLinux && isSystemMsWindows();
+        this.dirSeparator = enforcedLinux ? '/' : File.separatorChar;
     }
 
     /** The main object method */
