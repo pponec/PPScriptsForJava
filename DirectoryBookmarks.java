@@ -200,7 +200,7 @@ public final class DirectoryBookmarks {
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
                                 + endDir;
-                        return convertDir(false, result);
+                        return convertDir(false, result, isSystemWindows);
                     }
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
@@ -226,7 +226,8 @@ public final class DirectoryBookmarks {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
-                writer.append(key).append(cellSeparator).append(convertDir(true, dir));
+                // Function `isSystemMsWindows()` is required due a GitBash
+                writer.append(key).append(cellSeparator).append(convertDir(true, dir, isSystemMsWindows()));
                 if (comments.length > 0) {
                     writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
@@ -364,7 +365,7 @@ public final class DirectoryBookmarks {
     }
 
     /** Convert a directory text to the store format or back */
-    private String convertDir(boolean toStoreFormat, String dir) {
+    private String convertDir(boolean toStoreFormat, String dir, boolean isSystemWindows) {
         final var homeDirMarkEnabled = !homeDirMark.isEmpty();
         if (toStoreFormat) {
             var result = homeDirMarkEnabled && dir.startsWith(USER_HOME)
