@@ -1,4 +1,4 @@
-// Common utilities for Java17+
+// Common utilities for Java17+ for the CLI (command line interface).
 // Usage $ java CommonUtilities.java
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
 
@@ -23,7 +23,7 @@ public final class CommonUtilities {
         new CommonUtilities(System.out).start(List.of(args));
     }
 
-    void start(final List<String> args) throws Exception {
+    void start(final List<String> args) {
         var statement = args.isEmpty() ? "" : args.get(0);
         switch (statement) {
             case "date" -> {
@@ -41,16 +41,17 @@ public final class CommonUtilities {
             case "grep" -> {
                 if (args.size() > 2) {
                     final var pattern = Pattern.compile(args.get(1)); // Pattern.CASE_INSENSITIVE);
-                    for (int i = 2, max = args.size(); i < max; ++i) {
-                        final var file = args.get(i);
+                    args.stream().skip(2).forEach(file -> {
                         try (var rows = Files.lines(Path.of(file), StandardCharsets.UTF_8)) {
                             rows.forEach(row -> {
                                 if (pattern.matcher(row).find()) {
                                     out.printf("%s: %s%n", file, row);
                                 }
                             });
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
-                    }
+                    });
                 }
             }
             default -> {
