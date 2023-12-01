@@ -40,10 +40,11 @@ public final class DirectoryBookmarks {
     private final boolean isSystemWindows;
     private final char dirSeparator;
 
-    public static void main(String[] args) throws Exception {
-        boolean enforcedLinux = args.length >=1 && "linux".equals(args[0]);
+    public static void main(String[] argumentArray) throws Exception {
+        var args = List.of(argumentArray);
+        var enforcedLinux = !args.isEmpty() && "linux".equals(args.get(0));
         if (enforcedLinux) {
-            args = Arrays.copyOfRange(args, 1, args.length);
+            args = args.subList(1, args.size());
         }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
@@ -64,14 +65,14 @@ public final class DirectoryBookmarks {
     }
 
     /** The main object method */
-    public void start(String... args) throws Exception {
-        final var statement = args.length == 0 ? "" : args[0];
+    public void start(List<String> args) throws Exception {
+        final var statement = args.isEmpty() ? "" : args.get(0);
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
             case "l", "list" -> { // list all directories or show the one directory
-                if (args.length > 1 && !args[1].isEmpty()) {
-                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args[1]);
-                    var dir = getDirectory(args[1], defaultDir);
+                if (args.size() > 1 && !args.get(1).isEmpty()) {
+                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args.get(1));
+                    var dir = getDirectory(args.get(1), defaultDir);
                     if (dir == defaultDir) {
                         exit(-1, defaultDir);
                     } else {
@@ -82,16 +83,16 @@ public final class DirectoryBookmarks {
                 }
             }
             case "s", "save" -> {
-                if (args.length < 3) printHelpAndExit(-1);
-                var msg = Arrays.copyOfRange(args, 3, args.length);
-                save(args[1], args[2], msg); // (dir, key, comments)
+                if (args.size() < 3) printHelpAndExit(-1);
+                var msg = args.subList(3, args.size());
+                save(args.get(1), args.get(2), msg); // (dir, key, comments)
             }
             case "r", "read" -> {
-                if (args.length < 2) printHelpAndExit(-1);
-                removeBookmark(args[1]);
+                if (args.size() < 2) printHelpAndExit(-1);
+                removeBookmark(args.get(1));
             }
             case "b", "bookmarks"-> {
-                var dir = args.length > 1 ? args[1] : currentDir;
+                var dir = args.size() > 1 ? args.get(1) : currentDir;
                 printAllBookmarksOfDirectory(dir);
             }
             case "i", "install"-> {
@@ -210,10 +211,10 @@ public final class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save("", key);
+        save("", key, List.of());
     }
 
-    private void save(String dir, String key, String... comments) throws IOException {
+    private void save(String dir, String key, List<String> comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
             exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
@@ -228,7 +229,7 @@ public final class DirectoryBookmarks {
             if (!dir.isEmpty()) {
                 // Function `isSystemMsWindows()` is required due a GitBash
                 writer.append(key).append(cellSeparator).append(convertDir(true, dir, isSystemMsWindows()));
-                if (comments.length > 0) {
+                if (!comments.isEmpty()) {
                     writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
                         writer.append(' ').append(comment);
