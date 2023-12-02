@@ -1,6 +1,8 @@
 // Common utilities for Java17+ for the CLI (command line interface).
-// Usage $ java CommonUtilities.java
+// Usage $ java utils.CommonUtilities.java
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
+
+package utils;
 
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
