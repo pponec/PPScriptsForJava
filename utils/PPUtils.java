@@ -20,16 +20,20 @@ import java.util.stream.Stream;
 /**
  * Usage and examples:
  * <ul>
- *    <li>{@code java PPUtils date} - prints "2023-12-31"</li>
- *    <li>{@code java PPUtils time} - prints "2359"</li>
- *    <li>{@code java PPUtils datetime} - prints "2023-12-31T2359"</li>
- *    <li>{@code java PPUtils find main.*String java$ } - prints "PPUtils.java"</li>
- *    <li>{@code java PPUtils grep main.*String PPUtils.java } - prints "public static void main(final String[] ..."</li>
+ *    <li>{@code java PPUtils find main.*String java$ } - find files by regular expressions.</li>
+ *    <li>{@code java PPUtils grep main.*String PPUtils.java } - find file rows by a regular expression.</li>
+ *    <li>{@code java PPUtils date} - prints a date by ISO format, for example: "2023-12-31"</li>
+ *    <li>{@code java PPUtils time} - prints hours and time, for example "2359"</li>
+ *    <li>{@code java PPUtils datetime} - prints datetime format "2023-12-31T2359"</li>
+ *    <li>{@code java PPUtils date-iso} - prints datetime by ISO format, eg: "2023-12-31T23:59:59.999"</li>
+ *    <li>{@code java PPUtils date-format "yyyy-MM-dd'T'HH:mm:ss.SSS"} - prints a time by a custom format</li>
  * </ul>
  */
 public final class PPUtils {
 
     private final PrintStream out;
+
+    private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
     public PPUtils(PrintStream out) {
         this.out = out;
@@ -42,17 +46,12 @@ public final class PPUtils {
     void start(final List<String> args) throws IOException {
         var statement = args.isEmpty() ? "" : args.get(0);
         switch (statement) {
-            case "date" -> {
-                var result = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                out.println(result);
-            }
-            case "time" -> {
-                var result = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HHmm"));
-                out.println(result);
-            }
-            case "datetime" -> {
-                var result = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM'T'HHmm"));
-                out.println(result);
+            case "find" -> {
+                final var file = Path.of(args.get(1));
+                final var subArgs = args.subList(2, args.size());
+                final var bodyPattern = build(subArgs, -2, t -> Pattern.compile(t));
+                final var filePattern = build(subArgs, -1, t -> Pattern.compile(t));
+                new FinderUtilitiy(bodyPattern, filePattern, out).printAllFiles(file);
             }
             case "grep" -> {
                 if (args.size() > 2) {
@@ -63,18 +62,34 @@ public final class PPUtils {
                     });
                 }
             }
-            case "find" -> {
-                final var file = Path.of(args.get(1));
-                final var subArgs = args.subList(2, args.size());
-                final var bodyPattern = build(subArgs, -2, t -> Pattern.compile(t));
-                final var filePattern = build(subArgs, -1, t -> Pattern.compile(t));
-                new FinderUtilitiy(bodyPattern, filePattern, out).printAllFiles(file);
+            case "date" -> {
+                out.println(currentDate("yyyy-MM-dd"));
+            }
+            case "time" -> {
+                out.println(currentDate("HHmm"));
+            }
+            case "datetime" -> {
+                out.println(currentDate("yyyy-MM'T'HHmm"));
+            }
+            case "date-iso" -> {
+                out.println(currentDate(dateIsoFormat));
+            }
+            case "date-format" -> {
+                if (args.size() <= 1) {
+                    throw new IllegalArgumentException("Use some format, for example: \"%s\""
+                            .formatted(dateIsoFormat));
+                }
+                out.println(currentDate(args.get(1)));
             }
             default -> {
-                out.println("Use one of the commands: date, time, datetime, grep, find");
+                out.println("Use an one of the next commands: find, grep, date, time, datetime, date-iso, date-format");
                 System.exit(-1);
             }
         }
+    }
+
+    private String currentDate(String format) {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern(format));
     }
 
     private <T> T build(List<String> args, int index, Function<String, T> func) {
