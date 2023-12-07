@@ -17,6 +17,16 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+/**
+ * Usage and examples:
+ * <ul>
+ *    <li>{@code java PPUtils date} - prints "2023-12-31"</li>
+ *    <li>{@code java PPUtils time} - prints "2359"</li>
+ *    <li>{@code java PPUtils datetime} - prints "2023-12-31T2359"</li>
+ *    <li>{@code java PPUtils find main.*String java$ } - prints "PPUtils.java"</li>
+ *    <li>{@code java PPUtils grep main.*String PPUtils.java } - prints "public static void main(final String[] ..."</li>
+ * </ul>
+ */
 public final class PPUtils {
 
     private final PrintStream out;
