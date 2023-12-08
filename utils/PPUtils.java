@@ -6,6 +6,7 @@ package utils;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -135,6 +136,8 @@ public final class PPUtils {
                     validRows.forEach(row -> out.printf("%s: %s%n", file, row));
                     return true;
                 }
+            } catch (UncheckedIOException e) {
+                return false;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
