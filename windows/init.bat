@@ -6,9 +6,9 @@ rem "Autorun"="%USERPROFILE%\bin\init.bat"
 
 rem Windows CMD script template to create shortcuts for the DirectoryBookmarks utility
 doskey directoryBookmarks="C:\Program Files\Amazon Corretto\jdk17.0.9_8\bin\java" --limit-modules java.base,java.net.http,jdk.compiler,jdk.crypto.ec -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar"
-doskey cdf=for /f "tokens=*" %%a in ('java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" -l $1') do cd "%%a"
-doskey ldf=java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" -l $*
-doskey sdf=java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" -s . $*
+doskey cdf=for /f "tokens=*" %%a in ('java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" g $1') do cd "%%a"
+doskey ldf=java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" l $*
+doskey sdf=java -jar "%USERPROFILE%\bin\DirectoryBookmarks.jar" s . $*
 
 rem Linux compatibility statements
 doskey l=dir /o-n /tc $*
