@@ -20,7 +20,7 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.9.0";
+    private final String appVersion = "1.9.1";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char comment = '#';
@@ -82,6 +82,10 @@ public final class DirectoryBookmarks {
                     printDirectories();
                 }
             }
+            case "g", "get" -> { // get only one directory, default is the home.
+                var key = args.size() > 1 ? args.get(1) : homeDirMark;
+                start(List.of("l", key));
+            }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
                 var msg = args.subList(3, args.size());
@@ -136,7 +140,7 @@ public final class DirectoryBookmarks {
                 appName,
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s [lgsrbfuc] bookmark directory optionalComment%n", javaExe);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
             out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
@@ -346,7 +350,7 @@ public final class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
-                    , "function cdf { Set-Location -Path $(directoryBookmarks -l $args) }"
+                    , "function cdf { Set-Location -Path $(directoryBookmarks -g $args) }"
                     , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
                     , "function ldf { directoryBookmarks l $args }"
                     , "function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }");
@@ -357,7 +361,7 @@ public final class DirectoryBookmarks {
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
-                    , "cdf() { cd \"$(directoryBookmarks l $1)\"; }"
+                    , "cdf() { cd \"$(directoryBookmarks g $1)\"; }"
                     , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
                     , "ldf() { directoryBookmarks l \"$1\"; }"
                     , "cpf() { argCount=$#; cp ${@:1:$((argCount-1))} \"$(ldf ${!argCount})\"; }");
