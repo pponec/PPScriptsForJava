@@ -1,340 +1,313 @@
 // npm install --save-dev @types/node
 // npm install --save-dev @types/node
 
-import * as fs from 'fs';
-import * as path from 'path';
+const fs = require('fs');
+const path = require('path');
+const USER_HOME = process.env.HOME || process.env.USERPROFILE;
 
 class DirectoryBookmarks {
-  private static USER_HOME: string = process.env.HOME || process.env.USERPROFILE || '';
-  private static CELL_SEPARATOR: string = '\t';
-  private static COMMENT: string = '#';
-  private static NEW_LINE: string = '\n';
 
-  private storeName: string = path.join(this.USER_HOME, '.directory-bookmarks.csv');
-  private out: fs.WriteStream = process.stdout;
-  private err: fs.WriteStream = process.stderr;
-  private exitByException: boolean = false;
-  private isSystemWindows: boolean = this.isSystemMsWindows();
+  private homePage = "https:";
+  private appName = path.basename(__filename, '.js');
+  private appVersion = "1.9.0";
+  private cellSeparator = '\t';
+  private comment = '#';
+  private newLine = require('os').EOL;
+  private dataHeader = `${this.comment} ${this.appName} ${this.appVersion} (${this.homePage})`;
+  private currentDir = process.cwd();
+  private currentDirMark = ".";
+  private homeDirMark = "~";
+  private storeName;
+  private out;
+  private err;
+  private exitByException;
+  private isSystemWindows;
+  private dirSeparator;
 
-  public static main(argumentArray: string[]): void {
-    const args: string[] = [...argumentArray];
-    const enforcedLinux: boolean = args.length !== 0 && args[0] === 'linux';
-
-    if (enforcedLinux) {
-      args.shift();
-    }
-
-    new DirectoryBookmarks().start(args);
+  constructor(storeName, out, err, enforcedLinux : boolean, exitByException: boolean ) {
+    this.storeName = storeName;
+    this.out = out;
+    this.err = err;
+    this.exitByException = exitByException;
+    this.isSystemWindows = !enforcedLinux && this.isSystemWindows();
+    this.dirSeparator = enforcedLinux ? '/' : path.sep;
   }
 
-  protected start(args: string[]): void {
-    const statement: string = args.length === 0 ? '' : args[0];
+  static main(argumentArray) {
+    let args = argumentArray;
+    const enforcedLinux = !args.isEmpty() && "linux" === args[0];
+    if (enforcedLinux) {
+      args = args.slice(1);
+    }
+    new DirectoryBookmarks(path.join(USER_HOME, ".directory-bookmarks.csv"),
+        process.stdout,
+        process.stderr, enforcedLinux, false).start(args);
+  }
 
-    if (statement === '') {
+  start(args : string[]) {
+    const statement = args.length === 0 ? "" : args[0];
+    if (statement === "") {
       this.printHelpAndExit(0);
     }
-
     switch (statement.charAt(0) === '-' ? statement.substring(1) : statement) {
-      case 'l':
-      case 'list':
-        this.printDirectories();
+      case "l":
+      case "list":
+        if (args.length > 1 && args[1] !== "") {
+          const defaultDir = `Bookmark [${args[1]}] has no directory.`;
+          const dir = this.getDirectory(args[1], defaultDir);
+          if (dir === defaultDir) {
+            this.exit(-1, defaultDir);
+          } else {
+            this.out.println(dir);
+          }
+        } else {
+          this.printDirectories();
+        }
         break;
-      case 's':
-      case 'save':
-        if (args.length < 3) this.printHelpAndExit(-1);
-        this.save(args[1], args[2], args.slice(3));
+      case "s":
+      case "save":
+        if (args.length < 3) {
+          this.printHelpAndExit(-1);
+        }
+        const msg = args.slice(3);
+        this.save(args[1], args[2], msg);
         break;
-      case 'r':
-      case 'read':
-        if (args.length < 2) this.printHelpAndExit(-1);
+      case "r":
+      case "read":
+        if (args.length < 2) {
+          this.printHelpAndExit(-1);
+        }
         this.removeBookmark(args[1]);
         break;
-      case 'b':
-      case 'bookmarks':
-        const dir: string = args.length > 1 ? args[1] : process.cwd();
+      case "b":
+      case "bookmarks":
+        const dir = args.length > 1 ? args[1] : this.currentDir;
         this.printAllBookmarksOfDirectory(dir);
         break;
-      case 'i':
-      case 'install':
+      case "i":
+      case "install":
         this.printInstall();
         break;
-      case 'f':
-      case 'fix':
+      case "f":
+      case "fix":
         this.fixMarksOfMissingDirectories();
         break;
-      case 'v':
-      case 'version':
-        this.out.printf('%s%n', '1.9.0');
+      case "v":
+      case "version":
+        this.out.printf("%s%n", this.appVersion);
         break;
       default:
-        this.out.printf('Arguments are not supported: %s', args.join(' '));
+        this.out.printf("Arguments are not supported: %s", args.join(" "));
         this.printHelpAndExit(-1);
     }
   }
 
-  private printHelpAndExit(status: number, ...messageLines: string[]): void {
-    const output: fs.WriteStream = status === 0 ? this.out : this.err;
-    const isJar: boolean = false;
-    const javaExe: string = `node ${__filename}`;
-    const initFile: string = this.isSystemWindows ? '$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1' : '~/.bashrc';
-
-    output.write(`${this.appName} ${this.appVersion} (${this.homePage})\n`);
-    output.write(`Usage: ${javaExe} [lsrbfuc] bookmark directory optionalComment\n`);
-
+  printHelpAndExit(status) {
+    const out = status === 0 ? this.out : this.err;
+    const isJar = false;
+    const javaExe = `python3 ${this.appName}.py`;
+    out.printf("%s %s (%s)%n", this.appName, this.appVersion, this.homePage);
+    out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
     if (this.isSystemWindows) {
-      output.write(`Integrate the script to Windows: ${javaExe} i >> ${initFile}`);
+      const initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
+      out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
     } else {
-      output.write(`Integrate the script to Ubuntu: ${javaExe} i >> ${initFile} && . ${initFile}\n`);
+      const initFile = "~/.bashrc";
+      out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
     }
-
     this.exit(status);
   }
 
-  private exit(status: number, ...messageLines: string[]): void {
-    const msg: string = messageLines.join(this.NEW_LINE);
-
+  exit(status, ...messageLines) {
+    const msg = messageLines.join(this.newLine);
     if (this.exitByException && status < 0) {
       throw new Error(msg);
     } else {
-      const output: fs.WriteStream = status >= 0 ? this.out : this.err;
-      output.write(`${msg}\n`);
+      const output = status >= 0 ? this.out : this.err;
+      output.println(msg);
       process.exit(status);
     }
   }
 
-  private printDirectories(): void {
-    const storeFile: string = this.createStoreFile();
-    const lines: string[] = fs.readFileSync(storeFile, 'utf-8').split('\n');
-
-    lines
-      .filter(line => !line.startsWith(this.COMMENT))
-      .sort()
-      .map(line => (this.isSystemWindows ? line.replace(/\//g, '\\') : line))
-      .forEach(line => this.out.write(`${line}\n`));
-  }
-
-  private getDirectory(key: string, defaultDir: string): string {
-    switch (key) {
-      case this.currentDirMark:
-        return process.cwd();
-      default:
-        const idx: number = key.indexOf(this.dirSeparator);
-        const extKey: string = (idx >= 0 ? key.substring(0, idx) : key) + this.CELL_SEPARATOR;
-        const storeFile: string = this.createStoreFile();
-        const lines: string[] = fs.readFileSync(storeFile, 'utf-8').split('\n');
-
-        const dir: string | undefined = lines
-          .filter(line => !line.startsWith(this.COMMENT))
-          .filter(line => line.startsWith(extKey))
-          .map(line => line.substring(extKey.length))
-          .find(Boolean);
-
-        if (dir) {
-          const dirString: string = dir;
-          const commentPattern: RegExp = new RegExp(`\\s+${this.COMMENT}\\s`);
-          const commentMatcher: RegExpMatchArray | null = dirString.match(commentPattern);
-          const endDir: string = idx >= 0 ? this.dirSeparator + key.substring(idx + 1) : '';
-          const result: string = (commentMatcher
-            ? dirString.substring(0, commentMatcher.index)
-            : dirString) + endDir;
-
-          return this.convertDir(false, result, this.isSystemWindows);
-        }
-    }
-
-    return defaultDir;
-  }
-
-  private removeBookmark(key: string): void {
-    this.save('', key, []);
-  }
-
-  private save(dir: string, key: string, comments: string[]): void {
-    if (key.includes(this.CELL_SEPARATOR) || key.includes(this.dirSeparator)) {
-      this.exit(-1, `The bookmark contains a tab or a slash: '${key}'`);
-    }
-
-    if (this.currentDirMark === dir) {
-      dir = process.cwd();
-    }
-
-    const extendedKey: string = key + this.CELL_SEPARATOR;
-    const tempFile: string = this.getTempStoreFile();
-    const storeFile: string = this.createStoreFile();
-    const dataHeader: string = `${this.dataHeader}${this.NEW_LINE}`;
-    const lines: string[] = fs.readFileSync(storeFile, 'utf-8').split('\n');
-
-    const writer: fs.WriteStream = fs.createWriteStream(tempFile);
-    writer.write(dataHeader);
-
-    if (dir !== '') {
-      const keyDirLine: string =
-        `${key}${this.CELL_SEPARATOR}${this.convertDir(true, dir, this.isSystemWindows)}`;
-      if (comments.length !== 0) {
-        writer.write(`${keyDirLine}${this.CELL_SEPARATOR}${this.COMMENT}`);
-        for (const comment of comments) {
-          writer.write(` ${comment}`);
-        }
-      }
-      writer.write(this.NEW_LINE);
-    }
-
-    lines
-      .filter(line => !line.startsWith(this.COMMENT))
-      .filter(line => !line.startsWith(extendedKey))
-      .sort()
-      .forEach(line => writer.write(`${line}${this.NEW_LINE}`));
-
-    writer.end();
-
-    fs.renameSync(tempFile, storeFile);
-  }
-
-  private createStoreFile(): string {
-    if (!fs.existsSync(this.storeName)) {
-      fs.writeFileSync(this.storeName, '');
-    }
-
-    return this.storeName;
-  }
-
-  private getTempStoreFile(): string {
-    const tempFile: string = path.join(path.dirname(this.storeName), '.dirbook');
-
-    fs.writeFileSync(tempFile, '');
-    return tempFile;
-  }
-
-  private fixMarksOfMissingDirectories(): void {
-    const keys: string[] = this.getAllSortedKeys();
-
-    keys
-      .filter(key => {
-        const dir: string = this.getDirectory(key, '');
-        return dir === '' || !fs.existsSync(dir);
-      })
-      .forEach(key => {
-        const msg: string = `Removed: ${key}\t${this.getDirectory(key, '?')}`;
-        this.out.write(`${msg}\n`);
-        this.removeBookmark(key);
-      });
-  }
-
-  private getAllSortedKeys(): string[] {
-    const result: string[] = [];
-
-    const lines: string[] = fs.readFileSync(this.createStoreFile(), 'utf-8').split('\n');
-    lines
-      .filter(line => !line.startsWith(this.COMMENT))
-      .sort()
-      .map(line => line.substring(0, line.indexOf(this.CELL_SEPARATOR)))
-      .forEach(key => result.push(key));
-
-    return result;
-  }
-
-  private printAllBookmarksOfDirectory(directory: string): void {
-    this.getAllSortedKeys().forEach(key => {
-      if (directory === this.getDirectory(key, '')) {
-        this.out.write(`${key}\n`);
+  printDirectories() {
+    const storeFile = this.createStoreFile();
+    const reader = fs.createReadStream(storeFile);
+    reader.on('line', (line) => {
+      if (!line.startsWith(this.comment)) {
+        const formattedLine = this.isSystemWindows ? line.replace('/', '\\') : line;
+        this.out.println(formattedLine);
       }
     });
   }
 
-  private printInstall(): void {
-    const exe: string = `node ${__filename}`;
+  getDirectory(key, defaultDir) {
+    switch (key) {
+      case this.currentDirMark:
+        return this.currentDir;
+      default:
+        const idx = key.indexOf(this.dirSeparator);
+        const extKey = (idx >= 0 ? key.substring(0, idx) : key) + this.cellSeparator;
+        const storeFile = this.createStoreFile();
+        const reader = fs.createReadStream(storeFile);
+        let dir = defaultDir;
+        reader.on('line', (line) => {
+          if (!line.startsWith(this.comment) && line.startsWith(extKey)) {
+            const dirString = line.substring(extKey.length);
+            const commentPattern = new RegExp(`\\s+${this.comment}\\s`);
+            const commentMatcher = commentPattern.exec(dirString);
+            const endDir = idx >= 0 ? this.dirSeparator + key.substring(idx + 1) : "";
+            const result = (commentMatcher
+                    ? dirString.substring(0, commentMatcher.index)
+                    : dirString)
+                + endDir;
+            dir = this.convertDir(false, result, this.isSystemWindows);
+          }
+        });
+        return dir;
+    }
+  }
+
+  removeBookmark(key) {
+    this.save("", key, []);
+  }
+
+  save(dir, key, comments) {
+    if (key.indexOf(this.cellSeparator) >= 0 || key.indexOf(this.dirSeparator) >= 0) {
+      this.exit(-1, `The bookmark contains a tab or a slash: '${key}'`);
+    }
+    if (this.currentDirMark === dir) {
+      dir = this.currentDir;
+    }
+    const extendedKey = key + this.cellSeparator;
+    const tempFile = this.getTempStoreFile();
+    const storeFile = this.createStoreFile();
+    const writer = fs.createWriteStream(tempFile);
+    writer.write(this.dataHeader + this.newLine);
+    if (dir !== "") {
+      let line = `${key}${this.cellSeparator}${this.convertDir(true, dir, this.isSystemMsWindows())}`;
+      if (comments.length > 0) {
+        line += `${this.cellSeparator}${this.comment}`;
+        for (const comment of comments) {
+          line += ` ${comment}`;
+        }
+      }
+      writer.write(line + this.newLine);
+    }
+    const reader = fs.createReadStream(storeFile);
+    reader.on('line', (line) => {
+      if (!line.startsWith(this.comment) && !line.startsWith(extendedKey)) {
+        writer.write(line + this.newLine);
+      }
+    });
+    writer.on('finish', () => {
+      fs.renameSync(tempFile, storeFile);
+    });
+  }
+
+  createStoreFile() {
+    if (!fs.existsSync(this.storeName)) {
+      try {
+        fs.writeFileSync(this.storeName, "");
+      } catch (e) {
+        throw new Error(e);
+      }
+    }
+    return this.storeName;
+  }
+
+  getTempStoreFile() {
+    const tempFile = fs.mkdtempSync(path.join(fs.realpathSync(this.storeName), '.dirbook'));
+    return path.join(tempFile, '');
+  }
+
+  fixMarksOfMissingDirectories() {
+    const keys = this.getAllSortedKeys();
+    for (const key of keys) {
+      const dir = this.getDirectory(key, "");
+      if (dir === "" || !fs.existsSync(dir)) {
+        const msg = `Removed: ${key}\t${this.getDirectory(key, "?")}`;
+        this.out.println(msg);
+        this.removeBookmark(key);
+      }
+    }
+  }
+
+  getAllSortedKeys() {
+    const result = [];
+    const storeFile = this.createStoreFile();
+    const reader = fs.createReadStream(storeFile);
+    reader.on('line', (line) => {
+      if (!line.startsWith(this.comment)) {
+        const key = line.substring(0, line.indexOf(this.cellSeparator));
+        result.push(key);
+      }
+    });
+    return result.sort();
+  }
+
+  printAllBookmarksOfDirectory(directory) {
+    const keys = this.getAllSortedKeys();
+    for (const key of keys) {
+      if (directory === this.getDirectory(key, "")) {
+        this.out.println(key);
+      }
+    }
+  }
+
+  printInstall() {
+    const exe = `python3 ${this.appName}.py`;
     if (this.isSystemWindows) {
-      const msg: string = `
-# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the PowerShell:
-function directoryBookmarks { & ${exe} $args }
-function cdf { Set-Location -Path $(directoryBookmarks -l $args) }
-function sdf { directoryBookmarks s $($PWD.Path) @args }
-function ldf { directoryBookmarks l $args }
-function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }
-      `;
-      this.out.write(msg);
+      const msg = [
+        "",
+        `# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the PowerShell:`,
+        `function directoryBookmarks { & ${exe} $args }`,
+        `function cdf { Set-Location -Path $(directoryBookmarks -l $args) }`,
+        `function sdf { directoryBookmarks s $($PWD.Path) @args }`,
+        `function ldf { directoryBookmarks l $args }`,
+        `function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }`
+      ];
+      this.out.println(msg.join(this.newLine));
     } else {
-      const msg: string = `
-# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the Bash:
-alias directoryBookmarks='${exe}'
-cdf() { cd "$(directoryBookmarks l $1)"; }
-sdf() { directoryBookmarks s "$PWD" "$@"; } # Ready for symbolic links
-ldf() { directoryBookmarks l "$1"; }
-cpf() { argCount=$#; cp "${@:1:$((argCount-1))}" "$(ldf ${!argCount})"; }
-      `;
-      this.out.write(msg);
+      const msg = [
+        "",
+        `# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the Bash:`,
+        `alias directoryBookmarks='${exe}'`,
+        `cdf() { cd "$(directoryBookmarks l $1)"; }`,
+        `sdf() { directoryBookmarks s "$PWD" "$@"; }`,
+        `ldf() { directoryBookmarks l "$1"; }` //,
+        //`cpf() { argCount=$#; cp ${@:1:$((argCount-1))} "$(ldf ${!argCount})"; }`
+      ];
+      this.out.println(msg.join(this.newLine));
     }
   }
 
-  private convertDir(toStoreFormat: boolean, dir: string, isSystemWindows: boolean): string {
-    const homeDirMarkEnabled: boolean = !this.homeDirMark.isEmpty();
-
+  convertDir(toStoreFormat, dir, isSystemWindows) {
+    const homeDirMarkEnabled = this.homeDirMark !== "";
     if (toStoreFormat) {
-      let result: string = homeDirMarkEnabled && dir.startsWith(this.USER_HOME)
-        ? this.homeDirMark + dir.substring(this.USER_HOME.length)
-        : dir;
-
-      return isSystemWindows
-        ? result.replace(/\\/g, '/')
-        : result;
+      let result = homeDirMarkEnabled && dir.startsWith(USER_HOME)
+          ? this.homeDirMark + dir.substring(USER_HOME.length)
+          : dir;
+      result = isSystemWindows
+          ? result.replace('\\', '/')
+          : result;
+      return result;
     } else {
-      let result: string = isSystemWindows
-        ? dir.replace(/\//g, '\\')
-        : dir;
-
-      return homeDirMarkEnabled && result.startsWith(this.homeDirMark)
-        ? this.USER_HOME + result.substring(this.homeDirMark.length)
-        : result;
+      let result = isSystemWindows
+          ? dir.replace('/', '\\')
+          : dir;
+      result = homeDirMarkEnabled && result.startsWith(this.homeDirMark)
+          ? USER_HOME + result.substring(this.homeDirMark.length)
+          : result;
+      return result;
     }
   }
 
-  private isSystemMsWindows(): boolean {
-    return process.platform === 'win32';
-  }
-
-  private get appName(): string {
-    return path.basename(__filename, path.extname(__filename));
-  }
-
-  private get appVersion(): string {
-    return '1.9.0';
-  }
-
-  private get homePage(): string {
-    return 'https://github.com/pponec/DirectoryBookmarks';
-  }
-
-  private get currentDirMark(): string {
-    return '.';
-  }
-
-  private get homeDirMark(): string {
-    return '~';
-  }
-
-  private get mainClass(): Function {
-    return this.constructor;
-  }
-
-  private get sourceUrl(): string {
-    return `https://raw.githubusercontent.com/pponec/DirectoryBookmarks/${!true ? 'main' : 'development'}/${this.appName}.ts`;
-  }
-
-  private get dataHeader(): string {
-    return `${this.COMMENT} ${this.appName} ${this.appVersion} (${this.homePage})`;
-  }
-
-  private get currentDir(): string {
-    return process.cwd();
-  }
-
-  private get dirSeparator(): string {
-    return this.isSystemLinux ? '/' : path.sep;
-  }
-
-  private get isSystemLinux(): boolean {
-    return process.platform === 'linux';
+  isSystemMsWindows() {
+    return process.platform === "win32";
   }
 }
 
-DirectoryBookmarks.main(process.argv.slice(2));
+module.exports = DirectoryBookmarks;
+DirectoryBookmarks.main(process.argv);
+
+
