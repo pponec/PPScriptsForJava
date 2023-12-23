@@ -263,7 +263,7 @@ class DirectoryBookmarks {
                 'function cdf { Set-Location -Path \$(directoryBookmarks -l \$args) }',
                 'function sdf { directoryBookmarks s \$($PWD.Path) @args }',
                 'function ldf { directoryBookmarks l \$args }',
-                'function cpf() { cp ($args[0..(\$args.Length - 2)]) -Destination (ldf \$args[-1]) -Force }'
+                'function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }'
             ];
             this.out.write(msg.join(this.newLine));
         } else {
@@ -274,7 +274,7 @@ class DirectoryBookmarks {
                 'cdf() { cd "$(directoryBookmarks l $1)"; }',
                 'sdf() { directoryBookmarks s "$PWD" "$@"; }',
                 'ldf() { directoryBookmarks l "$1"; }',
-                'cpf() { argCount=$#; cp \${@:1:\$((argCount-1))} "\$(ldf \${!argCount})"; }'
+                'cpf() { argCount=$#; cp ${@:1:$((argCount-1))} "$(ldf ${!argCount})"; }'
             ];
             this.out.write(msg.join(this.newLine));
         }
