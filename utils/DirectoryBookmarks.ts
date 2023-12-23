@@ -1,3 +1,7 @@
+// Running by Node.js: $ node DirectoryBookmarks.js
+// Licence: Apache License, Version 2.0, https://github.com/pponec/
+
+
 // npm install --save-dev @types/node
 // npm install --save-dev @types/node
 
