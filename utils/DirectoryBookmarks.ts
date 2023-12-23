@@ -17,25 +17,25 @@ class DirectoryBookmarks {
     private readonly currentDir = process.cwd();
     private readonly currentDirMark = ".";
     private readonly homeDirMark = "~";
-    private readonly storeName;
-    private readonly out;
-    private readonly err;
-    private readonly exitByException;
-    private readonly isSystemWindows;
-    private readonly dirSeparator;
+    private readonly storeName : string;
+    private readonly out : NodeJS.WriteStream;
+    private readonly err : NodeJS.WriteStream;
+    private readonly exitByException : boolean;
+    private readonly isSystemWindows : boolean;
+    private readonly dirSeparator : string;
 
-    constructor(storeName: string, out, err, enforcedLinux: boolean, exitByException: boolean) {
+    constructor(storeName: string, out: NodeJS.WriteStream, err: NodeJS.WriteStream, enforcedLinux: boolean, exitByException: boolean) {
         this.storeName = storeName;
         this.out = out;
         this.err = err;
         this.exitByException = exitByException;
-        this.isSystemWindows = !enforcedLinux && this.isSystemWindows();
+        this.isSystemWindows = !enforcedLinux && this.isSystemMsWindowsProc();
         this.dirSeparator = enforcedLinux ? '/' : path.sep;
     }
 
-    static main(argumentArray) {
-        let args = argumentArray;
-        const enforcedLinux = !args.isEmpty() && "linux" === args[0];
+    static main(argumentArray : string[] ) {
+        let args = new Array(...argumentArray);
+        const enforcedLinux = args.length > 0 && "linux" === args[0];
         if (enforcedLinux) {
             args = args.slice(1);
         }
@@ -44,7 +44,7 @@ class DirectoryBookmarks {
             process.stderr, enforcedLinux, false).start(args);
     }
 
-    start(args: string[]) {
+    start(args: Array<string>) {
         const statement = args.length === 0 ? "" : args[0];
         if (statement === "") {
             this.printHelpAndExit(0);
@@ -58,7 +58,7 @@ class DirectoryBookmarks {
                     if (dir === defaultDir) {
                         this.exit(-1, defaultDir);
                     } else {
-                        this.out.println(dir);
+                        this.out.write(`${dir}\n`);
                     }
                 } else {
                     this.printDirectories();
@@ -94,26 +94,25 @@ class DirectoryBookmarks {
                 break;
             case "v":
             case "version":
-                this.out.printf("%s%n", this.appVersion);
+                this.out.write(`${this.appVersion}\n`);
                 break;
             default:
-                this.out.printf("Arguments are not supported: %s", args.join(" "));
+                this.out.write(`Arguments are not supported: ${args.join(' ')}\n`);
                 this.printHelpAndExit(-1);
         }
     }
 
     printHelpAndExit(status) {
         const out = status === 0 ? this.out : this.err;
-        const isJar = false;
-        const javaExe = `python3 ${this.appName}.py`;
-        out.printf("%s %s (%s)%n", this.appName, this.appVersion, this.homePage);
-        out.printf("Usage: %s [lsrbfuc] bookmark directory optionalComment%n", javaExe);
+        const javaExe = `node ${this.appName}.js`;
+        out.write(`${this.appName} ${this.appVersion} (${this.homePage})\n`);
+        out.write(`Usage: ${javaExe} [lsrbfuc] bookmark directory optionalComment\n`);
         if (this.isSystemWindows) {
             const initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
-            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
+            out.write(`Integrate the script to Windows: ${javaExe} i >> ${initFile}`);
         } else {
             const initFile = "~/.bashrc";
-            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
+            out.write(`Integrate the script to Ubuntu: ${javaExe} i >> ${initFile} && . ${initFile}\n`);
         }
         this.exit(status);
     }
@@ -124,7 +123,7 @@ class DirectoryBookmarks {
             throw new Error(msg);
         } else {
             const output = status >= 0 ? this.out : this.err;
-            output.println(msg);
+            output.write(`${msg}\n`);
             process.exit(status);
         }
     }
@@ -135,7 +134,7 @@ class DirectoryBookmarks {
         reader.on('line', (line) => {
             if (!line.startsWith(this.comment)) {
                 const formattedLine = this.isSystemWindows ? line.replace('/', '\\') : line;
-                this.out.println(formattedLine);
+                this.out.write(formattedLine);
             }
         });
     }
@@ -184,7 +183,7 @@ class DirectoryBookmarks {
         const writer = fs.createWriteStream(tempFile);
         writer.write(this.dataHeader + this.newLine);
         if (dir !== "") {
-            let line = `${key}${this.cellSeparator}${this.convertDir(true, dir, this.isSystemMsWindows())}`;
+            let line = `${key}${this.cellSeparator}${this.convertDir(true, dir, this.isSystemWindows)}`;
             if (comments.length > 0) {
                 line += `${this.cellSeparator}${this.comment}`;
                 for (const comment of comments) {
@@ -226,7 +225,7 @@ class DirectoryBookmarks {
             const dir = this.getDirectory(key, "");
             if (dir === "" || !fs.existsSync(dir)) {
                 const msg = `Removed: ${key}\t${this.getDirectory(key, "?")}`;
-                this.out.println(msg);
+                this.out.write(`${msg}\n`);
                 this.removeBookmark(key);
             }
         }
@@ -249,35 +248,35 @@ class DirectoryBookmarks {
         const keys = this.getAllSortedKeys();
         for (const key of keys) {
             if (directory === this.getDirectory(key, "")) {
-                this.out.println(key);
+                this.out.write(`${key}\n`);
             }
         }
     }
 
     printInstall() {
-        const exe = `python3 ${this.appName}.py`;
+        const exe = `node ${this.appName}.js`;
         if (this.isSystemWindows) {
             const msg = [
                 "",
                 `# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the PowerShell:`,
                 `function directoryBookmarks { & ${exe} $args }`,
-                `function cdf { Set-Location -Path $(directoryBookmarks -l $args) }`,
-                `function sdf { directoryBookmarks s $($PWD.Path) @args }`,
-                `function ldf { directoryBookmarks l $args }`,
-                `function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }`
+                'function cdf { Set-Location -Path \$(directoryBookmarks -l \$args) }',
+                'function sdf { directoryBookmarks s \$($PWD.Path) @args }',
+                'function ldf { directoryBookmarks l \$args }',
+                'function cpf() { cp ($args[0..(\$args.Length - 2)]) -Destination (ldf \$args[-1]) -Force }'
             ];
-            this.out.println(msg.join(this.newLine));
+            this.out.write(msg.join(this.newLine));
         } else {
             const msg = [
                 "",
                 `# Shortcuts for ${this.appName} v${this.appVersion} utilities - for the Bash:`,
                 `alias directoryBookmarks='${exe}'`,
-                `cdf() { cd "$(directoryBookmarks l $1)"; }`,
-                `sdf() { directoryBookmarks s "$PWD" "$@"; }`,
-                `ldf() { directoryBookmarks l "$1"; }` //,
-                //`cpf() { argCount=$#; cp ${@:1:$((argCount-1))} "$(ldf ${!argCount})"; }`
+                'cdf() { cd "$(directoryBookmarks l $1)"; }',
+                'sdf() { directoryBookmarks s "$PWD" "$@"; }',
+                'ldf() { directoryBookmarks l "$1"; }',
+                'cpf() { argCount=$#; cp \${@:1:\$((argCount-1))} "\$(ldf \${!argCount})"; }'
             ];
-            this.out.println(msg.join(this.newLine));
+            this.out.write(msg.join(this.newLine));
         }
     }
 
@@ -302,12 +301,10 @@ class DirectoryBookmarks {
         }
     }
 
-    isSystemMsWindows() {
+    isSystemMsWindowsProc() {
         return process.platform === "win32";
     }
 }
 
 module.exports = DirectoryBookmarks;
 DirectoryBookmarks.main(process.argv);
-
-
