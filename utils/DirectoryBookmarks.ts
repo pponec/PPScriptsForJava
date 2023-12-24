@@ -1,17 +1,16 @@
 // Running by Node.js: $ node DirectoryBookmarks.js
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
 
-
 // npm install --save-dev @types/node
 // npm install --save-dev @types/node
 
 const fs = require('fs');
 const path = require('path');
-const USER_HOME = process.env.HOME || process.env.USERPROFILE;
+const readline = require('readline');
+const USER_HOME = process.env.HOME || process.env.USERPROFILE || "~";
 
 class DirectoryBookmarks {
-
-    private readonly homePage = "https:";
+    private readonly homePage = "https://github.com/pponec/DirectoryBookmarks";
     private readonly appName = path.basename(__filename, '.js');
     private readonly appVersion = "1.9.0";
     private readonly cellSeparator = '\t';
@@ -106,7 +105,7 @@ class DirectoryBookmarks {
         }
     }
 
-    printHelpAndExit(status) {
+    printHelpAndExit(status: number) {
         const out = status === 0 ? this.out : this.err;
         const javaExe = `node ${this.appName}.js`;
         out.write(`${this.appName} ${this.appVersion} (${this.homePage})\n`);
@@ -121,7 +120,7 @@ class DirectoryBookmarks {
         this.exit(status);
     }
 
-    exit(status, ...messageLines) {
+    exit(status : number, ...messageLines : string[]) {
         const msg = messageLines.join(this.newLine);
         if (this.exitByException && status < 0) {
             throw new Error(msg);
@@ -134,16 +133,15 @@ class DirectoryBookmarks {
 
     printDirectories() {
         const storeFile = this.createStoreFile();
-        const reader = fs.createReadStream(storeFile);
-        reader.on('line', (line) => {
+        this.forAllLines(storeFile, line => {
             if (!line.startsWith(this.comment)) {
-                const formattedLine = this.isSystemWindows ? line.replace('/', '\\') : line;
-                this.out.write(formattedLine);
+                const formattedLine: string = this.isSystemWindows ? line.replace('/', '\\') : line;
+                this.out.write(`${formattedLine}\n`);
             }
         });
     }
 
-    getDirectory(key, defaultDir) {
+    getDirectory(key: string, defaultDir: string) {
         switch (key) {
             case this.currentDirMark:
                 return this.currentDir;
@@ -151,9 +149,8 @@ class DirectoryBookmarks {
                 const idx = key.indexOf(this.dirSeparator);
                 const extKey = (idx >= 0 ? key.substring(0, idx) : key) + this.cellSeparator;
                 const storeFile = this.createStoreFile();
-                const reader = fs.createReadStream(storeFile);
                 let dir = defaultDir;
-                reader.on('line', (line) => {
+                this.forAllLines(storeFile, line => {
                     if (!line.startsWith(this.comment) && line.startsWith(extKey)) {
                         const dirString = line.substring(extKey.length);
                         const commentPattern = new RegExp(`\\s+${this.comment}\\s`);
@@ -170,11 +167,11 @@ class DirectoryBookmarks {
         }
     }
 
-    removeBookmark(key) {
+    removeBookmark(key: string) {
         this.save("", key, []);
     }
 
-    save(dir, key, comments) {
+    save(dir : string, key : string, comments : string[]) {
         if (key.indexOf(this.cellSeparator) >= 0 || key.indexOf(this.dirSeparator) >= 0) {
             this.exit(-1, `The bookmark contains a tab or a slash: '${key}'`);
         }
@@ -196,24 +193,17 @@ class DirectoryBookmarks {
             }
             writer.write(line + this.newLine);
         }
-        const reader = fs.createReadStream(storeFile);
-        reader.on('line', (line) => {
+        this.forAllLines(storeFile, line => {
             if (!line.startsWith(this.comment) && !line.startsWith(extendedKey)) {
                 writer.write(line + this.newLine);
             }
         });
-        writer.on('finish', () => {
-            fs.renameSync(tempFile, storeFile);
-        });
+        fs.renameSync(tempFile, storeFile);
     }
 
-    createStoreFile() {
+    createStoreFile(){
         if (!fs.existsSync(this.storeName)) {
-            try {
-                fs.writeFileSync(this.storeName, "");
-            } catch (e) {
-                throw new Error(e);
-            }
+            fs.writeFileSync(this.storeName, "");
         }
         return this.storeName;
     }
@@ -235,11 +225,10 @@ class DirectoryBookmarks {
         }
     }
 
-    getAllSortedKeys() {
-        const result = [];
+    getAllSortedKeys(): string[] {
+        const result : string[] = [];
         const storeFile = this.createStoreFile();
-        const reader = fs.createReadStream(storeFile);
-        reader.on('line', (line) => {
+        this.forAllLines(storeFile, (line: string) => {
             if (!line.startsWith(this.comment)) {
                 const key = line.substring(0, line.indexOf(this.cellSeparator));
                 result.push(key);
@@ -248,7 +237,7 @@ class DirectoryBookmarks {
         return result.sort();
     }
 
-    printAllBookmarksOfDirectory(directory) {
+    printAllBookmarksOfDirectory(directory: string) {
         const keys = this.getAllSortedKeys();
         for (const key of keys) {
             if (directory === this.getDirectory(key, "")) {
@@ -284,7 +273,7 @@ class DirectoryBookmarks {
         }
     }
 
-    convertDir(toStoreFormat, dir, isSystemWindows) {
+    convertDir(toStoreFormat: boolean, dir: string, isSystemWindows: boolean) : string {
         const homeDirMarkEnabled = true; // this.homeDirMark !== ""; // TODO(fix the error)
         if (toStoreFormat) {
             let result = homeDirMarkEnabled && dir.startsWith(USER_HOME)
@@ -308,7 +297,17 @@ class DirectoryBookmarks {
     isSystemMsWindowsProc() {
         return process.platform === "win32";
     }
+
+    forAllLines(filePath: string,  consumer: (line: string) => void, encoding: BufferEncoding = 'utf-8'): void {
+        const reader = readline.createInterface({
+            input: fs.createReadStream(filePath, {encoding}),
+            crlfDelay: Infinity
+        });
+        reader.on('line', (line : string) => {
+            consumer(line);
+        });
+    }
 }
 
 module.exports = DirectoryBookmarks;
-DirectoryBookmarks.main(process.argv);
+DirectoryBookmarks.main(process.argv.slice(2));
