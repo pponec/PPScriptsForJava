@@ -1,5 +1,5 @@
 // Common utilities for Java17+ for the CLI (command line interface).
-// Usage $ java utils.CommonUtilities.java
+// Usage $ java utils.PPUtils.java
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
 
 package utils;
@@ -21,8 +21,8 @@ import java.util.stream.Stream;
 /**
  * Usage and examples:
  * <ul>
- *    <li>{@code java PPUtils find main.*String java$ } - find files by regular expressions.</li>
- *    <li>{@code java PPUtils grep main.*String PPUtils.java } - find file rows by a regular expression.</li>
+ *    <li>{@code java PPUtils find main.*String java$ } - find readable files by regular expressions.</li>
+ *    <li>{@code java PPUtils grep main.*String PPUtils.java } - find readable file rows by a regular expression.</li>
  *    <li>{@code java PPUtils date} - prints a date by ISO format, for example: "2023-12-31"</li>
  *    <li>{@code java PPUtils time} - prints hours and time, for example "2359"</li>
  *    <li>{@code java PPUtils datetime} - prints datetime format "2023-12-31T2359"</li>
@@ -111,7 +111,10 @@ public final class PPUtils {
         }
 
         public void printAllFiles(Path dir) throws IOException {
-            Files.list(dir).sorted(Comparator.naturalOrder()).forEach(file -> {
+            Files.list(dir)
+                    .filter(Files::isReadable)
+                    .sorted(Comparator.naturalOrder())
+                    .forEach(file -> {
                 if (Files.isDirectory(file)) {
                     try {
                         printAllFiles(file);
