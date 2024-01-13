@@ -44,7 +44,11 @@ public final class PPUtils {
         new PPUtils(System.out).start(List.of(args));
     }
 
-    void start(final List<String> args) throws IOException {
+    void start(List<String> args) throws IOException {
+        final var enforcedLinux = !args.isEmpty() && "linux".equals(args.get(0));
+        if (enforcedLinux) {
+            args = args.subList(1, args.size());
+        }
         var statement = args.isEmpty() ? "" : args.get(0);
         switch (statement) {
             case "find" -> {
@@ -52,12 +56,12 @@ public final class PPUtils {
                 final var subArgs = args.subList(2, args.size());
                 final var bodyPattern = build(subArgs, -2, t -> Pattern.compile(t));
                 final var filePattern = build(subArgs, -1, t -> Pattern.compile(t));
-                new FinderUtilitiy(bodyPattern, filePattern, out).printAllFiles(file);
+                new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out).printAllFiles(file);
             }
             case "grep" -> {
                 if (args.size() > 2) {
                     final var bodyPattern = build(args, 1, t -> Pattern.compile(t)); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(bodyPattern, null, out);
+                    final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
                     args.stream().skip(2).forEach(file -> {
                         pathFinder.grep(Path.of(file), false);
                     });
@@ -102,11 +106,13 @@ public final class PPUtils {
     static final class FinderUtilitiy {
         private final Pattern bodyPattern;
         private final Pattern filePattern;
+        private final boolean enforcedLinux;
         private final PrintStream out;
 
-        public FinderUtilitiy(Pattern bodyPattern, Pattern filePattern, PrintStream out) {
+        public FinderUtilitiy(Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
             this.bodyPattern = bodyPattern;
             this.filePattern = filePattern;
+            this.enforcedLinux = enforcedLinux;
             this.out = out;
         }
 
@@ -123,7 +129,7 @@ public final class PPUtils {
                     }
                 } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
                         && (bodyPattern == null || grep(file, true))) {
-                    out.println(file);
+                    print(file).println();
                 }
             });
         }
@@ -136,7 +142,7 @@ public final class PPUtils {
                 if (isPresent) {
                     return validRows.findFirst().isPresent();
                 } else {
-                    validRows.forEach(row -> out.printf("%s: %s%n", file, row));
+                    validRows.forEach(row -> print(file).printf(": %s%n", file, row));
                     return true;
                 }
             } catch (UncheckedIOException e) {
@@ -144,6 +150,16 @@ public final class PPUtils {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        /** Method supports a GitBash shell. */
+        protected PrintStream print(Path path) {
+            if (enforcedLinux) {
+                out.print(path.toString().replace('\\', '/'));
+            } else {
+                out.print(path);
+            }
+            return out;
         }
     }
 }
