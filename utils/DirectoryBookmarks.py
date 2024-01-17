@@ -7,6 +7,7 @@ import sys
 import tempfile
 import shutil
 import re
+import requests
 
 class DirectoryBookmarksSimple:
     userHome = os.path.expanduser("~")
@@ -20,7 +21,8 @@ class DirectoryBookmarksSimple:
     dataHeader = f"{comment} {appName} {appVersion} ({homePage})"
     currentDir = os.getcwd()
     currentDirMark = "."
-
+    sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/utils/%s.py" % (
+        'main' if not True else 'development', appName )
     homeDirMark = "~"
     storeName = None
     exitByException = False
@@ -67,6 +69,9 @@ class DirectoryBookmarksSimple:
             self.printInstall()
         elif statement in ["f", "fix"]:
             self.fixMarksOfMissingDirectories()
+        elif statement in ["u", "upgrade"]:
+            self.download()
+            print("%s was downloaded." % (self.appName))
         elif statement in ["v", "version"]:
             scriptVersion = self.getScriptVersion()
             if self.appVersion == scriptVersion:
@@ -189,6 +194,15 @@ class DirectoryBookmarksSimple:
         for key in keys:
             if directory == self.getDirectory(key, ""):
                 print(key)
+
+    def download(self):
+        try:
+            response = requests.get(self.sourceUrl)
+            response.raise_for_status()
+            with open(os.path.abspath(__file__), "w", encoding="utf-8") as file:
+                file.write(response.text)
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Upgrade fails: {e}")
 
     def getScriptVersion(self):
         return self.appVersion
