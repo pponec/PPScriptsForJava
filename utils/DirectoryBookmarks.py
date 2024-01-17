@@ -1,6 +1,6 @@
-# Running by Java 17: $ java DirectoryBookmarks.java
+# Running by Python: $ python3 DirectoryBookmarks.py
 # Licence: Apache License, Version 2.0, https://github.com/pponec/
-# Note: Generated code from a Java
+# Note: Generated code from a Java 17
 
 import os
 import sys
@@ -9,7 +9,7 @@ import shutil
 import re
 
 class DirectoryBookmarksSimple:
-    USER_HOME = os.path.expanduser("~")
+    userHome = os.path.expanduser("~")
     homePage = "https:"
     appName = os.path.basename(__file__).split(".")[0]
     appVersion = "1.9.1py"
@@ -208,11 +208,11 @@ class DirectoryBookmarksSimple:
     def convertDir(self, toStoreFormat, dir, isSystemWindows):
         homeDirMarkEnabled = bool(self.homeDirMark)
         if toStoreFormat:
-            result = f"{self.homeDirMark}{dir[len(self.USER_HOME):]}" if homeDirMarkEnabled and dir.startswith(self.USER_HOME) else dir
+            result = f"{self.homeDirMark}{dir[len(self.userHome):]}" if homeDirMarkEnabled and dir.startswith(self.userHome) else dir
             return result.replace('\\', '/') if isSystemWindows else result
         else:
             result = dir.replace('/', '\\') if isSystemWindows else dir
-            return f"{self.USER_HOME}{result[len(self.homeDirMark):]}" if homeDirMarkEnabled and result.startswith(self.homeDirMark) else result
+            return f"{self.userHome}{result[len(self.homeDirMark):]}" if homeDirMarkEnabled and result.startswith(self.homeDirMark) else result
 
     def isSystemMsWindows(self):
         return "win" in sys.platform.lower()
@@ -223,7 +223,7 @@ if enforcedLinux:
     args = args[1:]
 
 DirectoryBookmarksSimple(
-    os.path.join(DirectoryBookmarksSimple.USER_HOME, ".directory-bookmarks.csv"),
+    os.path.join(DirectoryBookmarksSimple.userHome, ".directory-bookmarks.csv"),
     enforcedLinux,
     False).start(args)
 
