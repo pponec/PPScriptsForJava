@@ -12,7 +12,7 @@ class DirectoryBookmarksSimple:
     USER_HOME = os.path.expanduser("~")
     homePage = "https:"
     appName = os.path.basename(__file__).split(".")[0]
-    appVersion = "1.9.1P"
+    appVersion = "1.9.1py"
     homePage = "https://github.com/pponec/DirectoryBookmarks"
     cellSeparator = '\t'
     comment = '#'
@@ -194,7 +194,7 @@ class DirectoryBookmarksSimple:
         return self.appVersion
 
     def printInstall(self):
-        exe = f"{self.appName}.py"
+        exe = f"python3 {os.path.abspath(__file__)}"
         msg = os.linesep.join([
             f"# Shortcuts for {self.appName} v{self.appVersion} utilities - for the Bash:",
             f"alias directoryBookmarks='{exe}'",
@@ -216,13 +216,12 @@ class DirectoryBookmarksSimple:
 
     def isSystemMsWindows(self):
         return "win" in sys.platform.lower()
-    
 
 args = sys.argv[1:]
 enforcedLinux = bool(args) and args[0] == "linux"
 if enforcedLinux:
     args = args[1:]
-    
+
 DirectoryBookmarksSimple(
     os.path.join(DirectoryBookmarksSimple.USER_HOME, ".directory-bookmarks.csv"),
     enforcedLinux,
