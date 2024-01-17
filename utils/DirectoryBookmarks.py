@@ -78,7 +78,7 @@ class DirectoryBookmarksSimple:
             self.printHelpAndExit(-1)
 
     def printHelpAndExit(self, status):
-        javaExe = f"{self.appName}.py"
+        javaExe = f"python3 {self.appName}.py"
         print(f"{self.appName} {self.appVersion} ({self.homePage})")
         print(f"Usage: {javaExe} [lgsrbfuc] bookmark directory optionalComment")
         if self.isSystemWindows:
