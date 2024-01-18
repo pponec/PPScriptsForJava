@@ -18,6 +18,7 @@ class DirectoryBookmarksSimple:
     cellSeparator = '\t'
     comment = '#'
     newLine = os.linesep
+    encoding = "utf-8"
     dataHeader = f"{comment} {appName} {appVersion} ({homePage})"
     currentDir = os.getcwd()
     currentDirMark = "."
@@ -104,7 +105,7 @@ class DirectoryBookmarksSimple:
 
     def printDirectories(self):
         storeFile = self.createStoreFile()
-        with open(storeFile, "r") as reader:
+        with open(storeFile, "r", encoding=self.encoding) as reader:
             for line in reader:
                 line = line.strip()
                 if not line.startswith(self.comment):
@@ -118,7 +119,7 @@ class DirectoryBookmarksSimple:
             idx = key.find(self.dirSeparator)
             extKey = key[:idx] + self.cellSeparator if idx >= 0 else key + self.cellSeparator
             storeFile = self.createStoreFile()
-            with open(storeFile, "r") as reader:
+            with open(storeFile, "r", encoding=self.encoding) as reader:
                 for line in reader:
                     line = line.strip()
                     if not line.startswith(self.comment) and line.startswith(extKey):
@@ -153,7 +154,7 @@ class DirectoryBookmarksSimple:
                     for comment in comments:
                         writer.write(f" {comment}")
                 writer.write(self.newLine)
-            with open(storeFile, "r") as reader:
+            with open(storeFile, "r", encoding=self.encoding) as reader:
                 for line in reader:
                     line = line.strip()
                     if not line.startswith(extendedKey):
@@ -169,7 +170,8 @@ class DirectoryBookmarksSimple:
         return self.storeName
 
     def getTempStoreFile(self):
-        return tempfile.NamedTemporaryFile(suffix=".dirbook", dir=self.storeName.parent)
+        dir = self.storeName.rsplit('/', 1)[0]
+        return tempfile.NamedTemporaryFile(suffix=".dirbook", dir=dir, mode="w")
 
     def fixMarksOfMissingDirectories(self):
         keys = self.getAllSortedKeys()
@@ -199,7 +201,7 @@ class DirectoryBookmarksSimple:
         try:
             response = requests.get(self.sourceUrl)
             response.raise_for_status()
-            with open(os.path.abspath(__file__), "w", encoding="utf-8") as file:
+            with open(os.path.abspath(__file__), "w", encoding=self.encoding) as file:
                 file.write(response.text)
         except requests.exceptions.RequestException as e:
             raise RuntimeError(f"Upgrade fails: {e}")
@@ -235,6 +237,9 @@ args = sys.argv[1:]
 enforcedLinux = bool(args) and args[0] == "linux"
 if enforcedLinux:
     args = args[1:]
+
+# DEBUG
+args = ["s", "/dir", "key", "comment"]
 
 DirectoryBookmarksSimple(
     os.path.join(DirectoryBookmarksSimple.userHome, ".directory-bookmarks.csv"),
