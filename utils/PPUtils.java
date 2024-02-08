@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -41,13 +42,13 @@ public final class PPUtils {
     }
 
     public static void main(final String[] args) throws Exception {
-        new PPUtils(System.out).start(List.of(args));
+        new PPUtils(System.out).start(new LinkedList<>(List.of(args)));
     }
 
-    void start(List<String> args) throws IOException {
-        final var enforcedLinux = !args.isEmpty() && "linux".equals(args.get(0));
+    void start(LinkedList<String> args) throws IOException {
+        final var enforcedLinux = !args.isEmpty() && "linux".equals(args.getFirst());
         if (enforcedLinux) {
-            args = args.subList(1, args.size());
+            args.removeFirst();
         }
         var statement = args.isEmpty() ? "" : args.get(0);
         switch (statement) {
