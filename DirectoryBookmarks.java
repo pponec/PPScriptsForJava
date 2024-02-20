@@ -41,10 +41,10 @@ public final class DirectoryBookmarks {
     private final char dirSeparator;
 
     public static void main(String[] argumentArray) throws Exception {
-        var args = List.of(argumentArray);
+        var args = list(argumentArray);
         var enforcedLinux = !args.isEmpty() && "linux".equals(args.get(0));
         if (enforcedLinux) {
-            args = args.subList(1, args.size());
+            args.removeFirst();
         }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
@@ -65,8 +65,8 @@ public final class DirectoryBookmarks {
     }
 
     /** The main object method */
-    public void start(List<String> args) throws Exception {
-        final var statement = args.isEmpty() ? "" : args.get(0);
+    public void start(LinkedList<String> args) throws Exception {
+        final var statement = args.isEmpty() ? "" : args.getFirst();
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
             case "l", "list" -> { // list all directories or show the one directory
@@ -84,7 +84,7 @@ public final class DirectoryBookmarks {
             }
             case "g", "get" -> { // get only one directory, default is the home.
                 var key = args.size() > 1 ? args.get(1) : homeDirMark;
-                start(List.of("l", key));
+                start(list("l", key));
             }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
@@ -458,5 +458,10 @@ public final class DirectoryBookmarks {
 
     private boolean isSystemMsWindows() {
         return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
+    }
+
+
+    private static LinkedList<String> list(final String... argumentArray) {
+        return new LinkedList(List.of(argumentArray));
     }
 }
