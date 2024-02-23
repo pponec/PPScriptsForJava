@@ -14,13 +14,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public final class DirectoryBookmarks {
     private static final String USER_HOME = System.getProperty("user.home");
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.9.1";
+    private final String appVersion = "1.9.2";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char comment = '#';
@@ -39,12 +40,13 @@ public final class DirectoryBookmarks {
     private final boolean exitByException;
     private final boolean isSystemWindows;
     private final char dirSeparator;
+    private final Utilities utils = new Utilities();
 
-    public static void main(String[] argumentArray) throws Exception {
-        var args = list(argumentArray);
-        var enforcedLinux = !args.isEmpty() && "linux".equals(args.get(0));
+    public static void main(String[] arguments) throws Exception {
+        var args = Array.of(arguments);
+        var enforcedLinux = args.getFirst().orElse("").equals("linux");
         if (enforcedLinux) {
-            args.removeFirst();
+            args = args.removeFirst();
         }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
@@ -60,19 +62,19 @@ public final class DirectoryBookmarks {
         this.out = out;
         this.err = err;
         this.exitByException = exitByException;
-        this.isSystemWindows = !enforcedLinux && isSystemMsWindows();
+        this.isSystemWindows = !enforcedLinux && utils.isSystemMsWindows();
         this.dirSeparator = enforcedLinux ? '/' : File.separatorChar;
     }
 
     /** The main object method */
-    public void start(LinkedList<String> args) throws Exception {
-        final var statement = args.isEmpty() ? "" : args.getFirst();
+    public void start(Array<String> args) throws Exception {
+        final var statement = args.getFirst().orElse("");
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
             case "l", "list" -> { // list all directories or show the one directory
-                if (args.size() > 1 && !args.get(1).isEmpty()) {
-                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args.get(1));
-                    var dir = getDirectory(args.get(1), defaultDir);
+                if (args.get(1).orElse("").length() > 0) {
+                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args.getItem(1));
+                    var dir = getDirectory(args.getItem(1), defaultDir);
                     if (dir == defaultDir) {
                         exit(-1, defaultDir);
                     } else {
@@ -83,20 +85,20 @@ public final class DirectoryBookmarks {
                 }
             }
             case "g", "get" -> { // get only one directory, default is the home.
-                var key = args.size() > 1 ? args.get(1) : homeDirMark;
-                start(list("l", key));
+                var key = args.get(1).orElse(homeDirMark);
+                start(Array.of("l", key));
             }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
-                var msg = args.subList(3, args.size());
-                save(args.get(1), args.get(2), msg); // (dir, key, comments)
+                var msg = args.subArray(3);
+                save(args.getItem(1), args.getItem(2), msg); // (dir, key, comments)
             }
             case "r", "read" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
-                removeBookmark(args.get(1));
+                removeBookmark(args.getItem(1));
             }
             case "b", "bookmarks"-> {
-                var dir = args.size() > 1 ? args.get(1) : currentDir;
+                var dir = args.get(1).orElse(currentDir);
                 printAllBookmarksOfDirectory(dir);
             }
             case "i", "install"-> {
@@ -106,7 +108,7 @@ public final class DirectoryBookmarks {
                 fixMarksOfMissingDirectories();
             }
             case "c", "compile" -> {
-                compile();
+                utils.compile();
             }
             case "u", "upgrade" -> { // update
                 download();
@@ -122,7 +124,7 @@ public final class DirectoryBookmarks {
                 }
             }
             default -> {
-                out.printf("Arguments are not supported: %s", String.join(" ", args));
+                out.printf("Arguments are not supported: %s", String.join(" ", args.toList()));
                 printHelpAndExit(-1);
             }
         }
@@ -134,7 +136,7 @@ public final class DirectoryBookmarks {
      */
     private void printHelpAndExit(int status) {
         var out = status == 0 ? this.out : this.err;
-        var isJar = isJar();
+        var isJar = utils.isJar();
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
@@ -215,10 +217,10 @@ public final class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save("", key, List.of());
+        save("", key, Array.of());
     }
 
-    private void save(String dir, String key, List<String> comments) throws IOException {
+    private void save(String dir, String key, Array<String> comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
             exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
@@ -232,10 +234,10 @@ public final class DirectoryBookmarks {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
                 // Function `isSystemMsWindows()` is required due a GitBash
-                writer.append(key).append(cellSeparator).append(convertDir(true, dir, isSystemMsWindows()));
-                if (!comments.isEmpty()) {
+                writer.append(key).append(cellSeparator).append(convertDir(true, dir, utils.isSystemMsWindows()));
+                if (comments.hasLength()) {
                     writer.append(cellSeparator).append(comment);
-                    for (String comment : comments) {
+                    for (String comment : comments.toList()) {
                         writer.append(' ').append(comment);
                     }
                 }
@@ -318,7 +320,7 @@ public final class DirectoryBookmarks {
                 .build();
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() == 200) {
-            Files.writeString(Path.of(getSrcPath()), response.body());
+            Files.writeString(Path.of(utils.getSrcPath()), response.body());
         } else {
             throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
         }
@@ -327,7 +329,7 @@ public final class DirectoryBookmarks {
     /** Read version from the external script. */
     private String getScriptVersion() {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
-        try (BufferedReader reader = new BufferedReader(new FileReader(getSrcPath()))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(utils.getSrcPath()))) {
             return reader.lines()
                     .map(line ->  {
                         final var matcher = pattern.matcher(line);
@@ -342,11 +344,11 @@ public final class DirectoryBookmarks {
     }
 
     private void printInstall() {
-        var exePath = getPathOfRunningApplication();
+        var exePath = utils.getPathOfRunningApplication();
         var javaHome = System.getProperty("java.home");
         if (isSystemWindows) {
             var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
-                    .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
+                    .formatted(javaHome, requiredJavaModules, utils.isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
                     , "function directoryBookmarks { & %s $args }".formatted(exe)
@@ -357,7 +359,7 @@ public final class DirectoryBookmarks {
             out.println(msg);
         } else {
             var exe = "\"%s/bin/java\" --limit-modules %s %s\"%s\""
-                    .formatted(javaHome, requiredJavaModules, isJar() ? "-jar " : "", exePath);
+                    .formatted(javaHome, requiredJavaModules, utils.isJar() ? "-jar " : "", exePath);
             var msg = String.join(System.lineSeparator(), ""
                     , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
                     , "alias directoryBookmarks='%s'".formatted(exe)
@@ -391,77 +393,178 @@ public final class DirectoryBookmarks {
 
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
-    /** Compile the script and build it to the executable JAR file */
-    private void compile() throws Exception {
-        if  (isJar()) {
-            exit(-1, "Use the statement rather: java %s.java c".formatted(appName));
-        }
+    class Utilities {
 
-        var scriptDir = getScriptDir();
-        var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
-        var jarFile = "%s.jar".formatted(appName);
-        var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
-        var classFile = new File(scriptDir, "%s.class".formatted(appName));
-        classFile.deleteOnExit();
-
-        var compiler = ToolProvider.getSystemJavaCompiler();
-        if (compiler == null) {
-            throw new IllegalStateException("No Java Compiler is available");
-        }
-        var error = new ByteArrayOutputStream();
-        var result = compiler.run(null, null, new PrintStream(error), fullJavaClass);
-        if (result != 0) {
-            throw new IllegalStateException(error.toString());
-        }
-
-        // Build a JAR file:
-        String[] arguments = {jarExe, "cfe", jarFile, appName, classFile.getName()};
-        var process = new ProcessBuilder(arguments)
-                .directory(classFile.getParentFile())
-                .start();
-        var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-        var exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new IllegalStateException(err);
-        }
-    }
-
-    private String getScriptDir() {
-        var exePath = getPathOfRunningApplication();
-        return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
-    }
-
-    private boolean isJar() {
-        return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
-    }
-
-    /** Get a full path to this source Java file. */
-    private String getSrcPath() {
-        return "%s/%s.java".formatted(getScriptDir(), appName);
-    }
-
-    private String getPathOfRunningApplication() {
-        final var protocol = "file:/";
-        try {
-            final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
-            var result = location.toString();
-            if (isSystemWindows && result.startsWith(protocol)) {
-                result = result.substring(protocol.length());
-            } else {
-                result = location.getPath();
+        /** Compile the script and build it to the executable JAR file */
+        private void compile() throws Exception {
+            if (isJar()) {
+                exit(-1, "Use the statement rather: java %s.java c".formatted(appName));
             }
-            return URLDecoder.decode(result, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return "%s.%s".formatted(appName, "java");
+
+            var scriptDir = getScriptDir();
+            var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
+            var jarFile = "%s.jar".formatted(appName);
+            var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
+
+            var compiler = ToolProvider.getSystemJavaCompiler();
+            if (compiler == null) {
+                throw new IllegalStateException("No Java Compiler is available");
+            }
+            var error = new ByteArrayOutputStream();
+            var result = compiler.run(null, null, new PrintStream(error), fullJavaClass);
+            if (result != 0) {
+                throw new IllegalStateException(error.toString());
+            }
+
+            var classFiles = getAllClassFiles(mainClass);
+            // Build a JAR file:
+            var arguments = Array.of(jarExe, "cfe", jarFile, appName).add(classFiles);
+            var process = new ProcessBuilder(arguments.toArray())
+                    .directory(new File(classFiles[0]).getParentFile())
+                    .start();
+            var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            var exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IllegalStateException(err);
+            }
+
+            // Delete all classes:
+            deleteClasses(classFiles);
+        }
+
+        private String getScriptDir() {
+            var exePath = getPathOfRunningApplication();
+            return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
+        }
+
+        private boolean isJar() {
+            return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
+        }
+
+        /**
+         * Get a full path to this source Java file.
+         */
+        private String getSrcPath() {
+            return "%s/%s.java".formatted(getScriptDir(), appName);
+        }
+
+        private String getPathOfRunningApplication() {
+            final var protocol = "file:/";
+            try {
+                final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
+                var result = location.toString();
+                if (isSystemWindows && result.startsWith(protocol)) {
+                    result = result.substring(protocol.length());
+                } else {
+                    result = location.getPath();
+                }
+                return URLDecoder.decode(result, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return "%s.%s".formatted(appName, "java");
+            }
+        }
+
+        private void deleteClasses(String... classFiles) {
+            Stream.of(classFiles).forEach(f -> {
+                try {
+                    Files.delete(Path.of(f));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+        }
+
+        private boolean isSystemMsWindows() {
+            return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
+        }
+
+        private String[] getAllClassFiles(Class<?> mainClass) {
+            final var result = new ArrayList<String>();
+            final var suffix = ".class";
+            result.add(mainClass.getSimpleName() + suffix);
+            Stream.of(mainClass.getDeclaredClasses())
+                    .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
+                    .forEach(c -> result.add(c));
+            return result.toArray(String[]::new);
         }
     }
 
-    private boolean isSystemMsWindows() {
-        return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
-    }
+    /** The immutable Array wrapper (from the Ujorm framework) */
+    static class Array<T> {
+        protected final T[] array;
 
+        public Array(T[] array) {
+            this.array = array;
+        }
 
-    private static LinkedList<String> list(final String... argumentArray) {
-        return new LinkedList(List.of(argumentArray));
+        /** Negative index is supported */
+        public Optional<T> get(final int i) {
+            final var j = i >= 0 ? i : array.length - i;
+            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
+        }
+
+        /** Add new items to the new Array */
+        @SuppressWarnings("unchecked")
+        public Array<T> add(final T... toAdd) {
+            final T[] result = Arrays.copyOf(array, array.length + toAdd.length);
+            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
+            return new Array<>(result);
+        }
+
+        /** Negative index is supported */
+        public T getItem(final int i) {
+            return array[i >= 0 ? i : array.length + i];
+        }
+
+        public Optional<T> getFirst() {
+            return get(0);
+        }
+
+        public Optional<T> getLast() {
+            return get(-1);
+        }
+
+        public Array<T> removeFirst() {
+            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
+            return new Array<>(result);
+        }
+
+        public Array<T> subArray(final int from) {
+            final var result = Arrays.copyOfRange(array, from, array.length);
+            return new Array<>(result);
+        }
+
+        public List<T> toList() {
+            return List.of(array);
+        }
+
+        public Stream<T> stream() {
+            return Stream.of(array);
+        }
+
+        @SuppressWarnings("unchecked")
+        public T[] toArray() {
+            final var type = array.getClass().getComponentType();
+            final var result =  java.lang.reflect.Array.newInstance(type, array.length);
+            System.arraycopy(array, 0, result, 0, array.length);
+            return (T[]) result;
+        }
+
+        public boolean isEmpty() {
+            return array.length == 0;
+        }
+
+        public boolean hasLength() {
+            return array.length > 0;
+        }
+
+        public int size() {
+            return array.length;
+        }
+
+        @SuppressWarnings("unchecked")
+        public static <T> Array<T> of(T... chars) {
+            return new Array<T>(chars);
+        }
     }
 }

@@ -12,10 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.function.Function;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -42,26 +39,26 @@ public final class PPUtils {
     }
 
     public static void main(final String[] args) throws Exception {
-        new PPUtils(System.out).start(new LinkedList<>(List.of(args)));
+        new PPUtils(System.out).start(Array.of(args));
     }
 
-    void start(LinkedList<String> args) throws IOException {
-        final var enforcedLinux = !args.isEmpty() && "linux".equals(args.getFirst());
+    void start(Array<String> args) throws IOException {
+        final var enforcedLinux = args.getFirst().orElse("").equals("linux");
         if (enforcedLinux) {
             args.removeFirst();
         }
-        var statement = args.isEmpty() ? "" : args.get(0);
+        var statement = args.getFirst().orElse("");
         switch (statement) {
             case "find" -> {
-                final var file = Path.of(args.get(1));
-                final var subArgs = args.subList(2, args.size());
-                final var bodyPattern = build(subArgs, -2, t -> Pattern.compile(t));
-                final var filePattern = build(subArgs, -1, t -> Pattern.compile(t));
+                final var file = args.get(1).map(t -> Path.of(t)).get();
+                final var subArgs = args.subArray(2);
+                final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).get();
+                final var filePattern = subArgs.get(-1).map(t -> Pattern.compile(t)).get();
                 new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out).printAllFiles(file);
             }
             case "grep" -> {
                 if (args.size() > 2) {
-                    final var bodyPattern = build(args, 1, t -> Pattern.compile(t)); // Pattern.CASE_INSENSITIVE);
+                    final var bodyPattern = args.get(1).map(t -> Pattern.compile(t)).get(); // Pattern.CASE_INSENSITIVE);
                     final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
                     args.stream().skip(2).forEach(file -> {
                         pathFinder.grep(Path.of(file), false);
@@ -81,11 +78,9 @@ public final class PPUtils {
                 out.println(currentDate(dateIsoFormat));
             }
             case "date-format" -> {
-                if (args.size() <= 1) {
-                    throw new IllegalArgumentException("Use some format, for example: \"%s\""
-                            .formatted(dateIsoFormat));
-                }
-                out.println(currentDate(args.get(1)));
+                out.println(currentDate(args.get(1).orElseThrow(() ->
+                        new IllegalArgumentException("Use some format, for example: \"%s\""
+                                .formatted(dateIsoFormat)))));
             }
             default -> {
                 out.println("Use an one of the next commands: find, grep, date, time, datetime, date-iso, date-format");
@@ -96,12 +91,6 @@ public final class PPUtils {
 
     private String currentDate(String format) {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern(format));
-    }
-
-    private <T> T build(List<String> args, int index, Function<String, T> func) {
-        final var idx = index < 0 ? args.size() + index : index;
-        final var text = (idx >= 0 && idx < args.size()) ? args.get(idx) : null;
-        return text != null ? func.apply(text) : null;
     }
 
     static final class FinderUtilitiy {
@@ -161,6 +150,85 @@ public final class PPUtils {
                 out.print(path);
             }
             return out;
+        }
+    }
+
+    /** The immutable Array wrapper with utilities (from the Ujorm framework) */
+    static class Array<T> {
+        protected final T[] array;
+
+        public Array(T[] array) {
+            this.array = array;
+        }
+
+        /** Negative index is supported */
+        public Optional<T> get(final int i) {
+            final var j = i >= 0 ? i : array.length - i;
+            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
+        }
+
+        /** Add new items to the new Array */
+        @SuppressWarnings("unchecked")
+        public Array<T> add(final T... toAdd) {
+            final var result = Arrays.copyOf(array, array.length + toAdd.length);
+            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
+            return new Array<>(result);
+        }
+
+        /** Negative index is supported */
+        public T getItem(final int i) {
+            return array[i >= 0 ? i : array.length + i];
+        }
+
+        public Optional<T> getFirst() {
+            return get(0);
+        }
+
+        public Optional<T> getLast() {
+            return get(-1);
+        }
+
+        public Array<T> removeFirst() {
+            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
+            return new Array<>(result);
+        }
+
+        public Array<T> subArray(final int from) {
+            final var result = Arrays.copyOfRange(array, from, array.length);
+            return new Array<>(result);
+        }
+
+        public List<T> toList() {
+            return List.of(array);
+        }
+
+        public Stream<T> stream() {
+            return Stream.of(array);
+        }
+
+        @SuppressWarnings("unchecked")
+        public T[] toArray() {
+            final var type = array.getClass().getComponentType();
+            final var result =  java.lang.reflect.Array.newInstance(type, array.length);
+            System.arraycopy(array, 0, result, 0, array.length);
+            return (T[]) result;
+        }
+
+        public boolean isEmpty() {
+            return array.length == 0;
+        }
+
+        public boolean hasLength() {
+            return array.length > 0;
+        }
+
+        public int size() {
+            return array.length;
+        }
+
+        @SuppressWarnings("unchecked")
+        public static <T> Array<T> of(T... chars) {
+            return new Array<T>(chars);
         }
     }
 }
