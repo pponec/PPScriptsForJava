@@ -4,9 +4,7 @@
 
 package utils;
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,15 +76,44 @@ public final class PPUtils {
                 out.println(currentDate(dateIsoFormat));
             }
             case "date-format" -> {
-                out.println(currentDate(args.get(1).orElseThrow(() ->
-                        new IllegalArgumentException("Use some format, for example: \"%s\""
-                                .formatted(dateIsoFormat)))));
+                out.println(currentDate(args.get(1).orElseThrow(() -> new IllegalArgumentException(
+                        "Use some format, for example: \"%s\"".formatted(dateIsoFormat)))));
+            }
+            case "base64encoded" -> {
+                base64Converter(Path.of(args.get(1).orElse("undefined file name")), true);
+            }
+            case "base64decoded" -> {
+                base64Converter(Path.of(args.get(1).orElse("undefined file name")), false);
             }
             default -> {
                 out.println("Use an one of the next commands: find, grep, date, time, datetime, date-iso, date-format");
                 System.exit(-1);
             }
         }
+    }
+
+    /** Encode a decode file by the Base64 */
+    public void base64Converter(Path inpFile, boolean encode) throws IOException {
+        final var inpFileName = inpFile.getFileName().toString();
+        final var outFile = encode
+                ? inpFile.resolveSibling(inpFileName + ".base64")
+                : inpFile.resolveSibling(inpFileName.substring(0, inpFileName.lastIndexOf(".")));
+        final var encoder = Base64.getEncoder();
+        final var decoder = Base64.getDecoder();
+        final var buffer = new byte[2000];
+        var byteCount = 0;
+        try (
+           final var is = encode ? Files.newInputStream(inpFile) : decoder.wrap(Files.newInputStream(inpFile));
+           final var os = encode ? encoder.wrap(Files.newOutputStream(outFile)) : Files.newOutputStream(outFile);
+        ) {
+            while ((byteCount = is.read(buffer)) != -1) {
+                final var b2 = byteCount < buffer.length
+                        ? Arrays.copyOfRange(buffer, 0, byteCount)
+                        : buffer;
+                os.write(b2);
+            }
+        }
+        out.println("Converted file has a name: '%s'".formatted(outFile));
     }
 
     private String currentDate(String format) {
