@@ -28,6 +28,8 @@ import java.util.stream.Stream;
  */
 public final class PPUtils {
 
+    private final String appVersion = "1.0.3";
+
     private final PrintStream out;
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
@@ -43,15 +45,15 @@ public final class PPUtils {
     void start(Array<String> args) throws IOException {
         final var enforcedLinux = args.getFirst().orElse("").equals("linux");
         if (enforcedLinux) {
-            args.removeFirst();
+            args = args.removeFirst();
         }
         var statement = args.getFirst().orElse("");
         switch (statement) {
             case "find" -> {
                 final var file = args.get(1).map(t -> Path.of(t)).get();
                 final var subArgs = args.subArray(2);
-                final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).get();
-                final var filePattern = subArgs.get(-1).map(t -> Pattern.compile(t)).get();
+                final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).orElse(null);
+                final var filePattern = subArgs.get(-1).map(t -> Pattern.compile(t)).orElse(null);
                 new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out).printAllFiles(file);
             }
             case "grep" -> {
@@ -86,7 +88,11 @@ public final class PPUtils {
                 new Converters(out).convertBase64(args.get(1).orElse(""), false);
             }
             default -> {
-                out.println("Use an one of the next commands: find, grep, date, time, datetime, date-iso, date-format");
+                out.println("%s v%s: Use an one of the next commands:\nfind" +
+                        ", grep, date, time, datetime" +
+                        ", date-iso, date-format" +
+                        ", base64encode, base64decode"
+                                .formatted(getClass().getSimpleName(), appVersion));
                 System.exit(-1);
             }
         }
@@ -138,7 +144,9 @@ public final class PPUtils {
     }
 
     static final class FinderUtilitiy {
+        /** @Nullable */
         private final Pattern bodyPattern;
+        /** @Nullable */
         private final Pattern filePattern;
         private final boolean enforcedLinux;
         private final PrintStream out;
@@ -207,7 +215,7 @@ public final class PPUtils {
 
         /** Negative index is supported */
         public Optional<T> get(final int i) {
-            final var j = i >= 0 ? i : array.length - i;
+            final var j = i >= 0 ? i : array.length + i;
             return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
         }
 
@@ -238,7 +246,8 @@ public final class PPUtils {
         }
 
         public Array<T> subArray(final int from) {
-            final var result = Arrays.copyOfRange(array, from, array.length);
+            final var from2 = Math.min(from, array.length);
+            final var result = Arrays.copyOfRange(array, from2, array.length);
             return new Array<>(result);
         }
 
@@ -268,6 +277,11 @@ public final class PPUtils {
 
         public int size() {
             return array.length;
+        }
+
+        @Override
+        public String toString() {
+            return List.of(array).toString();
         }
 
         @SuppressWarnings("unchecked")

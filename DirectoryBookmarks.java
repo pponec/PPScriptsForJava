@@ -21,7 +21,7 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.9.2";
+    private final String appVersion = "1.9.3";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char comment = '#';
@@ -499,7 +499,7 @@ public final class DirectoryBookmarks {
 
         /** Negative index is supported */
         public Optional<T> get(final int i) {
-            final var j = i >= 0 ? i : array.length - i;
+            final var j = i >= 0 ? i : array.length + i;
             return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
         }
 
@@ -560,6 +560,11 @@ public final class DirectoryBookmarks {
 
         public int size() {
             return array.length;
+        }
+
+        @Override
+        public String toString() {
+            return List.of(array).toString();
         }
 
         @SuppressWarnings("unchecked")
