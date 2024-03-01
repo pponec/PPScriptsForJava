@@ -34,6 +34,8 @@ public final class PPUtils {
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
+    protected static final boolean sortDirectoryLast = true;
+
     public PPUtils(PrintStream out) {
         this.out = out;
     }
@@ -161,7 +163,7 @@ public final class PPUtils {
         public void printAllFiles(Path dir) throws IOException {
             Files.list(dir)
                     .filter(Files::isReadable)
-                    .sorted(Comparator.naturalOrder())
+                    .sorted(sortDirectoryLast ? new DirLastComparator() : Comparator.naturalOrder())
                     .forEach(file -> {
                 if (Files.isDirectory(file)) {
                     try {
@@ -202,6 +204,20 @@ public final class PPUtils {
                 out.print(path);
             }
             return out;
+        }
+    }
+
+    /** Compare files by a name, the directory last */
+    static class DirLastComparator implements Comparator<Path> {
+        @Override
+        public int compare(final Path p1, final Path p2) {
+            final var d1 = Files.isDirectory(p1);
+            final var d2 = Files.isDirectory(p2);
+            if (d1 != d2) {
+                return d1 ? 1 : -1;
+            } else {
+                return p1.getFileName().toString().compareTo(p1.getFileName().toString());
+            }
         }
     }
 
