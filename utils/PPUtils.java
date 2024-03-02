@@ -170,6 +170,9 @@ public final class PPUtils {
         private final Pattern filePattern;
         private final boolean enforcedLinux;
         private final PrintStream out;
+        private final Comparator<Path> pathComparator = sortDirectoryLast
+                ? new DirLastComparator()
+                : Comparator.naturalOrder();
 
         public FinderUtilitiy(Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
             this.bodyPattern = bodyPattern;
@@ -181,7 +184,7 @@ public final class PPUtils {
         public void findFiles(Path dir, boolean printLine) throws IOException {
             Files.list(dir)
                     .filter(Files::isReadable)
-                    .sorted(sortDirectoryLast ? new DirLastComparator() : Comparator.naturalOrder())
+                    .sorted(pathComparator)
                     .forEach(file -> {
                 if (Files.isDirectory(file)) {
                     try {
