@@ -1,6 +1,20 @@
-// Common utilities for Java17+ for the CLI (command line interface).
-// Usage $ java utils.PPUtils.java
-// Licence: Apache License, Version 2.0, https://github.com/pponec/
+/*
+ * Common utilities for Java17+ for the CLI (command line interface).
+ * Usage: java PPUtils.java
+ *
+ * Add the function to the Powershell config ("%USERPROFILE%"\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1) on Windows:
+ * function ppUtils { $javaClass = Join-Path -Path $env:UserProfile -ChildPath 'bin\PPUtils.java'; java $javaClass $args }
+ * function findy { pputils find . $args }
+ * function grepy { pputils grep . $args }
+ *
+ * Add the function to the Bash config ("$HOME"/.bash_aliases) on Linux Ubuntu:
+ * ppUtils() { javaExe $HOME/bin/PPUtils.java "$@"; }
+ * findy() { ppUtils find . "$@"; }
+ * grepy() { ppUtils grep . "$@"; }
+ *
+ * Author: Pavel Ponec, https://github.com/pponec/DirectoryBookmarks
+ * Licence: Apache License, Version 2.0
+ */
 
 package utils;
 
@@ -59,10 +73,10 @@ public final class PPUtils {
                 new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out).printAllFiles(file);
             }
             case "grep" -> {
-                if (args.size() > 2) {
-                    final var bodyPattern = args.get(1).map(t -> Pattern.compile(t)).get(); // Pattern.CASE_INSENSITIVE);
+                if (args.size() > 3) {
+                    final var bodyPattern = args.get(2).map(t -> Pattern.compile(t)).orElse(null); // Pattern.CASE_INSENSITIVE);
                     final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
-                    args.stream().skip(2).forEach(file -> {
+                    args.stream().skip(3).forEach(file -> {
                         pathFinder.grep(Path.of(file), false);
                     });
                 }
@@ -173,20 +187,20 @@ public final class PPUtils {
                     }
                 } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
                         && (bodyPattern == null || grep(file, true))) {
-                    print(file).println();
+                    printFileName(file).println();
                 }
             });
         }
 
         public boolean grep(Path file, boolean isPresent) {
             try {
-                final Stream<String> validRows = Files
+                final var validLineStream = Files
                         .lines(file, StandardCharsets.UTF_8)
                         .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find());
                 if (isPresent) {
-                    return validRows.findFirst().isPresent();
+                    return validLineStream.findFirst().isPresent();
                 } else {
-                    validRows.forEach(row -> print(file).printf(": %s%n", file, row));
+                    validLineStream.forEach(line -> printFileName(file).printf(":%s%n", line));
                     return true;
                 }
             } catch (UncheckedIOException e) {
@@ -197,7 +211,7 @@ public final class PPUtils {
         }
 
         /** Method supports a GitBash shell. */
-        protected PrintStream print(Path path) {
+        protected PrintStream printFileName(Path path) {
             if (enforcedLinux) {
                 out.print(path.toString().replace('\\', '/'));
             } else {
