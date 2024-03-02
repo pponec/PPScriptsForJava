@@ -48,6 +48,8 @@ public final class PPUtils {
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
+    protected static final String grepSeparator = ":";
+
     protected static final boolean sortDirectoryLast = true;
 
     public PPUtils(PrintStream out) {
@@ -65,19 +67,21 @@ public final class PPUtils {
         }
         var statement = args.getFirst().orElse("");
         switch (statement) {
-            case "find" -> {
+            case "find" -> { // Example: find [--print] public.+interface java$
                 final var file = args.get(1).map(t -> Path.of(t)).get();
-                final var subArgs = args.subArray(2);
+                final var printLine = args.get(2).orElse("").equals("--print");
+                final var subArgs = args.subArray(2 + (printLine ? 1 : 0 ));
                 final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).orElse(null);
                 final var filePattern = subArgs.get(-1).map(t -> Pattern.compile(t)).orElse(null);
-                new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out).printAllFiles(file);
+                new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out)
+                        .findFiles(file, printLine && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 3) {
                     final var bodyPattern = args.get(2).map(t -> Pattern.compile(t)).orElse(null); // Pattern.CASE_INSENSITIVE);
                     final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
                     args.stream().skip(3).forEach(file -> {
-                        pathFinder.grep(Path.of(file), false);
+                        pathFinder.grep(Path.of(file), true);
                     });
                 }
             }
@@ -174,34 +178,34 @@ public final class PPUtils {
             this.out = out;
         }
 
-        public void printAllFiles(Path dir) throws IOException {
+        public void findFiles(Path dir, boolean printLine) throws IOException {
             Files.list(dir)
                     .filter(Files::isReadable)
                     .sorted(sortDirectoryLast ? new DirLastComparator() : Comparator.naturalOrder())
                     .forEach(file -> {
                 if (Files.isDirectory(file)) {
                     try {
-                        printAllFiles(file);
+                        findFiles(file, printLine);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
-                        && (bodyPattern == null || grep(file, true))) {
+                        && (bodyPattern == null || grep(file, printLine))) {
                     printFileName(file).println();
                 }
             });
         }
 
-        public boolean grep(Path file, boolean isPresent) {
+        public boolean grep(Path file, boolean printLine) {
             try {
                 final var validLineStream = Files
                         .lines(file, StandardCharsets.UTF_8)
                         .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find());
-                if (isPresent) {
-                    return validLineStream.findFirst().isPresent();
+                if (printLine) {
+                    validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
+                    return false;
                 } else {
-                    validLineStream.forEach(line -> printFileName(file).printf(":%s%n", line));
-                    return true;
+                    return validLineStream.findFirst().isPresent();
                 }
             } catch (UncheckedIOException e) {
                 return false;
