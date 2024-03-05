@@ -111,7 +111,7 @@ public final class DirectoryBookmarks {
                 utils.compile();
             }
             case "u", "upgrade" -> { // update
-                download();
+                utils.download();
                 out.printf("%s %s was downloaded. The following compilation is recommended.%n",
                         appName, getScriptVersion());
             }
@@ -313,19 +313,6 @@ public final class DirectoryBookmarks {
         });
     }
 
-    private void download() throws IOException, InterruptedException {
-        var client = HttpClient.newHttpClient();
-        var request = HttpRequest.newBuilder()
-                .uri(URI.create(sourceUrl))
-                .build();
-        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() == 200) {
-            Files.writeString(Path.of(utils.getSrcPath()), response.body());
-        } else {
-            throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
-        }
-    }
-
     /** Read version from the external script. */
     private String getScriptVersion() {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
@@ -486,6 +473,19 @@ public final class DirectoryBookmarks {
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
                     .forEach(c -> result.add(c));
             return result.toArray(String[]::new);
+        }
+
+        private void download() throws IOException, InterruptedException {
+            var client = HttpClient.newHttpClient();
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(sourceUrl))
+                    .build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                Files.writeString(Path.of(getSrcPath()), response.body());
+            } else {
+                throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
+            }
         }
     }
 

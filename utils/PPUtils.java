@@ -16,9 +16,15 @@
  * Licence: Apache License, Version 2.0
  */
 
-package utils;
+package utils; // Comment the package before JAR building
 
+import javax.tools.ToolProvider;
 import java.io.*;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +48,11 @@ import java.util.stream.Stream;
  */
 public final class PPUtils {
 
-    private final String appVersion = "1.0.3";
+    private final String appName = getClass().getSimpleName();
+
+    private final String appVersion = "1.0.5";
+
+    private final Class<?> mainClass = getClass();
 
     private final PrintStream out;
 
@@ -52,6 +62,9 @@ public final class PPUtils {
 
     protected static final boolean sortDirectoryLast = true;
 
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/utils/%s.java"
+            .formatted(!true ? "main" : "development", appName);
+
     public PPUtils(PrintStream out) {
         this.out = out;
     }
@@ -60,7 +73,7 @@ public final class PPUtils {
         new PPUtils(System.out).start(Array.of(args));
     }
 
-    void start(Array<String> args) throws IOException {
+    void start(Array<String> args) throws Exception {
         final var enforcedLinux = args.getFirst().orElse("").equals("linux");
         if (enforcedLinux) {
             args = args.removeFirst();
@@ -106,6 +119,15 @@ public final class PPUtils {
             }
             case "base64decode" -> {
                 new Converters(out).convertBase64(args.get(1).orElse(""), false);
+            }
+            case "upgrade" -> {
+                new Utilities().download();
+            }
+            case "compile" -> {
+                new Utilities().compile();
+            }
+            case "version" -> {
+                out.printf("%s v%s%n", appName, appVersion);
             }
             default -> {
                 out.println("%s v%s: Use an one of the next commands:\nfind" +
@@ -241,6 +263,120 @@ public final class PPUtils {
             }
         }
     }
+
+    //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
+
+    class Utilities {
+
+        /** Compile the script and build it to the executable JAR file */
+        private void compile() throws Exception {
+            if (isJar()) {
+                System.out.printf("Use the statement rather: java %s.java c %s".formatted(appName));
+                System.exit(1);
+            }
+
+            var scriptDir = getScriptDir();
+            var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
+            var jarFile = "%s.jar".formatted(appName);
+            var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
+
+            var compiler = ToolProvider.getSystemJavaCompiler();
+            if (compiler == null) {
+                throw new IllegalStateException("No Java Compiler is available");
+            }
+            var error = new ByteArrayOutputStream();
+            var result = compiler.run(null, null, new PrintStream(error), fullJavaClass);
+            if (result != 0) {
+                throw new IllegalStateException(error.toString());
+            }
+
+            var classFiles = getAllClassFiles(mainClass);
+            // Build a JAR file:
+            var arguments = Array.of(jarExe, "cfe", jarFile, appName).add(classFiles);
+            var process = new ProcessBuilder(arguments.toArray())
+                    .directory(new File(classFiles[0]).getParentFile())
+                    .start();
+            var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            var exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IllegalStateException(err);
+            }
+
+            // Delete all classes:
+            deleteClasses(classFiles);
+        }
+
+        private String getScriptDir() {
+            var exePath = getPathOfRunningApplication();
+            return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
+        }
+
+        private boolean isJar() {
+            return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
+        }
+
+        /**
+         * Get a full path to this source Java file.
+         */
+        private String getSrcPath() {
+            return "%s/%s.java".formatted(getScriptDir(), appName);
+        }
+
+        private String getPathOfRunningApplication() {
+            final var enforcedLinux = false;
+            final var protocol = "file:/";
+            try {
+                final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
+                var result = location.toString();
+                if (enforcedLinux && isSystemMsWindows() && result.startsWith(protocol)) {
+                    result = result.substring(protocol.length());
+                } else {
+                    result = location.getPath();
+                }
+                return URLDecoder.decode(result, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                return "%s.%s".formatted(appName, "java");
+            }
+        }
+
+        private void deleteClasses(String... classFiles) {
+            Stream.of(classFiles).forEach(f -> {
+                try {
+                    Files.delete(Path.of(f));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+        }
+
+        private boolean isSystemMsWindows() {
+            return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
+        }
+
+        private String[] getAllClassFiles(Class<?> mainClass) {
+            final var result = new ArrayList<String>();
+            final var suffix = ".class";
+            result.add(mainClass.getSimpleName() + suffix);
+            Stream.of(mainClass.getDeclaredClasses())
+                    .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
+                    .forEach(c -> result.add(c));
+            return result.toArray(String[]::new);
+        }
+
+        private void download() throws IOException, InterruptedException {
+            var client = HttpClient.newHttpClient();
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(sourceUrl))
+                    .build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                Files.writeString(Path.of(getSrcPath()), response.body());
+            } else {
+                throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
+            }
+        }
+    }
+
 
     /** The immutable Array wrapper with utilities (from the Ujorm framework) */
     static class Array<T> {
