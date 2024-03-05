@@ -16,7 +16,7 @@
  * Licence: Apache License, Version 2.0
  */
 
-package utils; // Comment the package before JAR building
+package utils;
 
 import javax.tools.ToolProvider;
 import java.io.*;
@@ -130,12 +130,12 @@ public final class PPUtils {
                 out.printf("%s v%s%n", appName, appVersion);
             }
             default -> {
-                out.println("%s v%s: Use an one of the next commands:\nfind" +
+                out.printf("%s v%s: Use an one of the next commands:\nfind" +
                         ", grep, date, time, datetime" +
                         ", date-iso, date-format" +
-                        ", base64encode, base64decode"
-                                .formatted(getClass().getSimpleName(), appVersion));
-                System.exit(-1);
+                        ", base64encode, base64decode, version %n"
+                        , getClass().getSimpleName(), appVersion);
+                System.exit(1);
             }
         }
     }
@@ -279,6 +279,7 @@ public final class PPUtils {
             var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
             var jarFile = "%s.jar".formatted(appName);
             var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
+            removePackage(Path.of(fullJavaClass));
 
             var compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) {
@@ -374,6 +375,14 @@ public final class PPUtils {
             } else {
                 throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
             }
+        }
+
+        private void removePackage(Path fullJavaClass) throws IOException {
+            var packageRegexp = "package %s;".formatted(mainClass.getPackageName());
+            System.out.println("packageRegexp: "  + packageRegexp);
+            var script = Files.readString(fullJavaClass);
+            script = script.replaceFirst(packageRegexp, "");
+            Files.writeString(fullJavaClass, script);
         }
     }
 

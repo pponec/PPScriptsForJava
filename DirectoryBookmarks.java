@@ -392,6 +392,7 @@ public final class DirectoryBookmarks {
             var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
             var jarFile = "%s.jar".formatted(appName);
             var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
+            removePackage(Path.of(fullJavaClass));
 
             var compiler = ToolProvider.getSystemJavaCompiler();
             if (compiler == null) {
@@ -486,6 +487,14 @@ public final class DirectoryBookmarks {
             } else {
                 throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
             }
+        }
+
+        private void removePackage(Path fullJavaClass) throws IOException {
+            var packageRegexp = "package %s;".formatted(mainClass.getPackageName());
+            System.out.println("packageRegexp: "  + packageRegexp);
+            var script = Files.readString(fullJavaClass);
+            script = script.replaceFirst(packageRegexp, "");
+            Files.writeString(fullJavaClass, script);
         }
     }
 
