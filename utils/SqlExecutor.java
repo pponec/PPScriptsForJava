@@ -23,12 +23,12 @@ public final class SqlExecutor {
     private final PrintStream out = System.out;
 
     public static void main(final String[] args) throws Exception {
-        try (Connection connection = db.connection()) {
-            new SqlExecutor().mainStart(connection, args);
+        try (Connection dbConnection = db.connection()) {
+            new SqlExecutor().mainStart(dbConnection, args);
         }
     }
 
-    void mainStart(Connection connection, String... args) throws Exception {
+    void mainStart(Connection dbConnection, String... args) throws Exception {
         // Create DB table
         var createTable = """
                 CREATE TABLE employee
@@ -37,7 +37,7 @@ public final class SqlExecutor {
                 , code VARCHAR(1)
                 , created DATE NOT NULL
                 )""".stripIndent();
-        try (var sql = new SqlParamBuilder(createTable, connection)) {
+        try (var sql = new SqlParamBuilder(createTable, dbConnection)) {
             sql.execute();
         }
 
@@ -53,7 +53,7 @@ public final class SqlExecutor {
                 "id2", 2,
                 "code", "T",
                 "created", LocalDate.parse("2024-04-14"));
-        try (var sql = new SqlParamBuilder(insertSql, insertArgs, connection)) {
+        try (var sql = new SqlParamBuilder(insertSql, insertArgs, dbConnection)) {
             sql.execute();
             // Insert next two rows:
             sql.setParam("id1", 11).setParam("id2", 12).setParam("code", "V");
@@ -61,7 +61,7 @@ public final class SqlExecutor {
         }
 
         // Select
-        String selectSql = """
+        var selectSql = """
                 SELECT t.id, t.code, t.created
                 FROM employee t
                 WHERE t.id < :id
@@ -69,7 +69,7 @@ public final class SqlExecutor {
                 ORDER BY t.id
                 """.stripIndent();
         var selectArgs = Map.of("id", 10, "code", Arrays.asList("T", "V"));
-        try (var sql = new SqlParamBuilder(selectSql, selectArgs, connection)) {
+        try (var sql = new SqlParamBuilder(selectSql, selectArgs, dbConnection)) {
             for (var rs : sql.executeSelect()) {
                 out.printf("id:%s, code:%s, created=%s %n".formatted(
                       rs.getInt(1), rs.getString(2), rs.getObject(3)));
@@ -142,25 +142,26 @@ public final class SqlExecutor {
         }
 
         public PreparedStatement prepareStatement() throws SQLException {
-            final List<Object> sqlValues = new ArrayList<>();
-            final String sql = buildSql(sqlValues, false);
-            if (preparedStatement == null) {
-                preparedStatement = dbConnection.prepareStatement(sql);
-            }
+            final var sqlValues = new ArrayList<>();
+            final var sql = buildSql(sqlValues, false);
+            final var result = preparedStatement != null
+                    ? preparedStatement
+                    : dbConnection.prepareStatement(sql);
             for (int i = 0, max = sqlValues.size(); i < max; i++) {
-                preparedStatement.setObject(i + 1, sqlValues.get(i));
+                result.setObject(i + 1, sqlValues.get(i));
             }
-            return preparedStatement;
+            this.preparedStatement = result;
+            return result;
         }
 
         protected String buildSql( List<Object> sqlValues, boolean toLog) {
-            final StringBuilder result = new StringBuilder(256);
-            final Matcher matcher = SQL_MARK.matcher(sqlTemplate);
-            final Set<String> missingKeys = new HashSet<>();
-            final Object[] singleValue = new Object[1];
+            final var result = new StringBuilder(256);
+            final var matcher = SQL_MARK.matcher(sqlTemplate);
+            final var missingKeys = new HashSet<>();
+            final var singleValue = new Object[1];
             while (matcher.find()) {
-                final String key = matcher.group(1);
-                final Object value = params.get(key);
+                final var key = matcher.group(1);
+                final var value = params.get(key);
                 if (value != null) {
                     matcher.appendReplacement(result, "");
                     singleValue[0] = value;
@@ -175,7 +176,7 @@ public final class SqlExecutor {
                     missingKeys.add(key);
                 }
             }
-            if (! toLog && !missingKeys.isEmpty()) {
+            if (!toLog && !missingKeys.isEmpty()) {
                 throw new IllegalArgumentException("Missing value of the keys: " + missingKeys);
             }
             matcher.appendTail(result);

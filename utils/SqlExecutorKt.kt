@@ -9,7 +9,6 @@ package utils
 
 import java.io.Closeable
 import java.io.IOException
-import java.io.Serializable
 import java.sql.*
 import java.time.LocalDate
 import java.util.*
@@ -20,19 +19,18 @@ import java.util.regex.Pattern
 
 /** Use SQL statements by the SqlParamBuilder class.  */
 class SqlExecutorKt {
-    private val out = System.out
 
     companion object {
         private val db = ConnectionProvider2.forH2("user", "pwd")
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            db.connection().use { connection -> SqlExecutorKt().mainStart(connection, *args) }
+            db.connection().use { SqlExecutorKt().mainStart(it, *args) }
         }
     }
 
     @Throws(Exception::class)
-    fun mainStart(connection: Connection, vararg args: String?) {
+    fun mainStart(connection: Connection, vararg args: String) {
         // Create DB table
         val createTable = """
                 CREATE TABLE employee
@@ -42,7 +40,7 @@ class SqlExecutorKt {
                 , created DATE NOT NULL
                 )
                 """.trimIndent()
-        SqlParamBuilder2(createTable, connection).use { sql -> sql.execute() }
+        SqlParamBuilderK(createTable, connection).use { it.execute() }
 
         // DB insert
         val insertSql = """
@@ -52,13 +50,13 @@ class SqlExecutorKt {
                 ( :id2, :code, :created)
                 """.trimIndent()
 
-        val insertArgs: Map<String?, Serializable> = java.util.Map.of(
-            "id1", 1,
-            "id2", 2,
-            "code", "T",
-            "created", LocalDate.parse("2024-04-14")
+        val insertArgs = mapOf(
+            "id1" to 1,
+            "id2" to 2,
+            "code" to "T",
+            "created" to LocalDate.parse("2024-04-14")
         )
-        SqlParamBuilder2(insertSql, insertArgs, connection).use { sql ->
+        SqlParamBuilderK(insertSql, insertArgs, connection).use { sql ->
             sql.execute()
             // Insert next two rows:
             sql.setParam("id1", 11).setParam("id2", 12).setParam("code", "V")
@@ -73,54 +71,52 @@ class SqlExecutorKt {
                   AND t.code IN (:code)
                 ORDER BY t.id
                 """.trimIndent()
-        val selectArgs = java.util.Map.of("id", 10, "code", mutableListOf("T", "V"))
-        SqlParamBuilder2(selectSql, selectArgs, connection).use { sql ->
+        val selectArgs = mapOf("id" to 10, "code" to mutableListOf("T", "V"))
+        SqlParamBuilderK(selectSql, selectArgs, connection).use { sql ->
             for (rs in sql.executeSelect()) {
-                out.println(("id:${rs.getInt(1)}" +
+                println("id:${rs.getInt(1)}" +
                         ", code:${rs.getString(2)}" +
                         ", created=${rs.getObject(3)}")
-                )
             }
             // New SELECT with modified SQL arguments:
             sql.setParam("id", 100)
             for (rs in sql.executeSelect()) {
-                out.println(("id: ${rs.getInt(1)}" +
+                println("id: ${rs.getInt(1)}" +
                         ", code:${rs.getString(2)}" +
                         ", created=${rs.getObject(3)}")
-                )
             }
         }
     }
 }
 
 /** A utility class from the Ujorm framework  */
-internal class SqlParamBuilder2(
+internal class SqlParamBuilderK(
     sqlTemplate: CharSequence,
-    params: Map<String?, *>?,
+    params: Map<String, *>,
     dbConnection: Connection
 ) : Closeable {
     private val sqlTemplate: String
-    private val params: MutableMap<String?, Any>
-    val connection: Connection
+    private val params: MutableMap<String, Any>
+    val dbConnection: Connection
     private var preparedStatement: PreparedStatement? = null
     private var rsWrapper: ResultSetWrapper? = null
 
     init {
         this.sqlTemplate = sqlTemplate.toString()
         this.params = HashMap(params)
-        connection = dbConnection
+        this.dbConnection = dbConnection
     }
 
     constructor(sqlTemplate: CharSequence, dbConnection: Connection) : this(
         sqlTemplate,
-        HashMap<String?, Any>(),
+        HashMap<String, Any>(),
         dbConnection
     )
 
     @Throws(IllegalStateException::class, SQLException::class)
     fun executeSelect(): Iterable<ResultSet> {
         try {
-            rsWrapper.use { rs -> }
+            rsWrapper.use { it } // Close the current ResultSet
         } catch (e: IOException) {
             throw IllegalStateException("Closing fails", e)
         }
@@ -136,7 +132,7 @@ internal class SqlParamBuilder2(
     /** The method closes a PreparedStatement object with related objects, not the database connection.  */
     override fun close() {
         try {
-            rsWrapper.use { c1 -> preparedStatement.use { c2 -> } }
+            rsWrapper.use { c1 -> preparedStatement.use { it } }
         } catch (e: Exception) {
             throw IllegalStateException("Closing fails", e)
         } finally {
@@ -149,7 +145,7 @@ internal class SqlParamBuilder2(
     fun prepareStatement(): PreparedStatement {
         val sqlValues: MutableList<Any> = ArrayList()
         val sql = buildSql(sqlValues, false)
-        val result = preparedStatement ?: connection.prepareStatement(sql) ?: throw IllegalStateException()
+        val result = preparedStatement ?: dbConnection.prepareStatement(sql) ?: throw IllegalStateException()
         preparedStatement = result
 
         var i = 0
@@ -189,7 +185,7 @@ internal class SqlParamBuilder2(
     }
 
     /** Set a SQL parameter  */
-    fun setParam(key: String?, value: Any): SqlParamBuilder2 {
+    fun setParam(key: String, value: Any): SqlParamBuilderK {
         params[key] = value
         return this
     }
@@ -251,7 +247,7 @@ internal class SqlParamBuilder2(
 
     companion object {
         /** SQL parameter mark type of `:param`  */
-        private val SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\]\\)]|$)")
+        private val SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\])]|$)")
     }
 }
 
