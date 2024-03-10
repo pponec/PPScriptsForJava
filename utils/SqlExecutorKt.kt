@@ -1,6 +1,6 @@
 /*
  * Common utilities for Java17+ for the CLI (command line interface).
- * Usage: java -cp ../lib/h2-2.2.224.jar SqlExecutorKtKt.java
+ * Usage: SqlExecutorKt.sh
  *
  * Environment: Java 17+ with JDBC driver com.h2database:h2:2.2.224 are required.
  * Licence: Apache License, Version 2.0, Pavel Ponec, https://github.com/pponec/DirectoryBookmarks
@@ -15,6 +15,8 @@ import java.time.LocalDate
 import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+
+//KTS// SqlExecutorKt.main(args) // For the Kotlin script, don't remove it.
 
 /** Use SQL statements by the SqlParamBuilder class.  */
 class SqlExecutorKt {
