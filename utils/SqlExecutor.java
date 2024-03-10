@@ -2,7 +2,7 @@
  * Common utilities for Java17+ for the CLI (command line interface).
  * Usage: java -cp ../lib/h2-2.2.224.jar SqlExecutor.java
  *
- * Environment: Java 17+ is required
+ * Environment: Java 17+ with JDBC driver com.h2database:h2:2.2.224 are required.
  * Licence: Apache License, Version 2.0, Pavel Ponec, https://github.com/pponec/DirectoryBookmarks
  */
 package utils;
