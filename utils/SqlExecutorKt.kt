@@ -20,7 +20,7 @@ import java.util.regex.Pattern
 /** Use SQL statements by the SqlParamBuilder class.  */
 class SqlExecutorKt {
 
-    companion object {
+    companion object Static {
         private val db = ConnectionProvider2.forH2("user", "pwd")
         @Throws(Exception::class)
         @JvmStatic
