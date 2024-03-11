@@ -18,7 +18,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -35,29 +34,35 @@ public final class SqlExecutor {
 
     void mainStart(Connection dbConnection, String... args) throws Exception {
         try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
-            System.out.println("CREATE TABLE");
-            builder.sql("CREATE TABLE employee",
-                            "( id INTEGER PRIMARY KEY",
-                            ", name VARCHAR(256) DEFAULT 'test'",
-                            ", code VARCHAR(1)",
-                            ", created DATE NOT NULL",
-                            ")")
+            // CREATE TABLE:
+            builder.sql("""
+                            CREATE TABLE employee
+                            ( id INTEGER PRIMARY KEY
+                            , name VARCHAR(256) DEFAULT 'test'
+                            , code VARCHAR(1)
+                            , created DATE NOT NULL
+                            )""".stripLeading())
                     .execute();
 
+            // SINGLE INSERT:
             System.out.println("SINGLE INSERT");
-            builder.sql("INSERT INTO employee",
-                            "( id, code, created ) VALUES",
-                            "( :id, :code, :created )")
+            builder.sql("""
+                            INSERT INTO employee
+                            ( id, code, created ) VALUES
+                            ( :id, :code, :created )
+                            """.stripLeading())
                     .bind("id", 1)
                     .bind("code", "T")
                     .bind("created", someDate)
                     .execute();
 
-            System.out.println("MULTI INSERT");
-            builder.sql("INSERT INTO employee",
-                            "(id,code,created) VALUES",
-                            "(:id1,:code,:created),",
-                            "(:id2,:code,:created)")
+            // MULTI INSERT:
+            builder.sql("""
+                            INSERT INTO employee
+                            (id,code,created) VALUES
+                            (:id1,:code,:created),
+                            (:id2,:code,:created)
+                            """.stripLeading())
                     .bind("id1", 2)
                     .bind("id2", 3)
                     .bind("code", "T")
@@ -68,32 +73,34 @@ public final class SqlExecutor {
                     .bind("code", "V")
                     .execute();
 
-            System.out.println("SELECT 1");
-            List<Employee> employees = builder.sql("SELECT t.id, t.name, t.created",
-                            "FROM employee t",
-                            "WHERE t.id < :id",
-                            "  AND t.code IN (:code)",
-                            "ORDER BY t.id")
+            // SELECT 1:
+            List<Employee> employees = builder.sql("""
+                            SELECT t.id, t.name, t.created
+                            FROM employee t
+                            WHERE t.id < :id
+                              AND t.code IN (:code)
+                            ORDER BY t.id
+                            """.stripLeading())
                     .bind("id", 10)
                     .bind("code", "T", "V")
                     .streamMap(rs -> new Employee(
                             rs.getInt(1),
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
-                    .collect(Collectors.toList());
+                    .toList();
             Assertions.assertEquals(3, employees.size());
             Assertions.assertEquals(1, employees.get(0).id);
             Assertions.assertEquals("test", employees.get(0).name);
             Assertions.assertEquals(someDate, employees.get(0).created);
 
-            System.out.println("SELECT 2 (reuse the previous SELECT)");
+            // REUSE SELECT:
             List<Employee> employees2 = builder
                     .bind("id", 100)
                     .streamMap(rs -> new Employee(
                             rs.getInt(1),
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
-                    .collect(Collectors.toList());
+                    .toList();
             Assertions.assertEquals(5, employees2.size());
         }
     }
@@ -104,7 +111,7 @@ public final class SqlExecutor {
     static class SqlParamBuilder implements Closeable {
 
         /** SQL parameter mark type of {@code :param} */
-        private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\]\\)]|$)");
+        private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\])]|$)");
         private final Connection dbConnection;
         private final Map<String, Object> params = new HashMap<>();
         private String sqlTemplate = null;
@@ -119,7 +126,7 @@ public final class SqlExecutor {
         public SqlParamBuilder sql(@NotNull String... sqlTemplates ) {
             close();
             this.sqlTemplate = sqlTemplates.length == 1
-                    ? sqlTemplates[0].toString() : String.join("\n", sqlTemplates);
+                    ? sqlTemplates[0] : String.join("\n", sqlTemplates);
             return this;
         }
 
@@ -139,7 +146,7 @@ public final class SqlExecutor {
         }
 
         /** Iterate executed select */
-        public void forEach(SqlConsumer consumer) throws IllegalStateException, SQLException  {
+        public void forEach(SqlConsumer<ResultSet> consumer) throws IllegalStateException, SQLException  {
             for (ResultSet rs : executeSelect()) {
                 consumer.accept(rs);
             }
