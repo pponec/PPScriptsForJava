@@ -7,20 +7,25 @@
  */
 package utils;
 
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Assertions;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /** Use SQL statements by the SqlParamBuilder class. */
 public final class SqlExecutor {
-
     private final static ConnectionProvider db = ConnectionProvider.forH2("user", "pwd");
-    private final PrintStream out = System.out;
+    private final LocalDate someDate = LocalDate.parse("2018-09-12");
 
     public static void main(final String[] args) throws Exception {
         try (Connection dbConnection = db.connection()) {
@@ -29,87 +34,99 @@ public final class SqlExecutor {
     }
 
     void mainStart(Connection dbConnection, String... args) throws Exception {
-        // Create DB table
-        var createTable = """
-                CREATE TABLE employee
-                ( id INTEGER PRIMARY KEY
-                , name VARCHAR(256) DEFAULT 'test'
-                , code VARCHAR(1)
-                , created DATE NOT NULL
-                )""".stripIndent();
-        try (var sql = new SqlParamBuilder(createTable, dbConnection)) {
-            sql.execute();
-        }
+        try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
+            System.out.println("CREATE TABLE");
+            builder.sql("CREATE TABLE employee",
+                            "( id INTEGER PRIMARY KEY",
+                            ", name VARCHAR(256) DEFAULT 'test'",
+                            ", code VARCHAR(1)",
+                            ", created DATE NOT NULL",
+                            ")")
+                    .execute();
 
-        // DB insert
-        var insertSql = """
-                INSERT INTO employee
-                ( id, code, created) VALUES
-                ( :id1, :code, :created),
-                ( :id2, :code, :created)
-                """.stripIndent();
-        var insertArgs = Map.of(
-                "id1", 1,
-                "id2", 2,
-                "code", "T",
-                "created", LocalDate.parse("2024-04-14"));
-        try (var sql = new SqlParamBuilder(insertSql, insertArgs, dbConnection)) {
-            sql.execute();
-            // Insert next two rows:
-            sql.setParam("id1", 11).setParam("id2", 12).setParam("code", "V");
-            sql.execute();
-        }
+            System.out.println("SINGLE INSERT");
+            builder.sql("INSERT INTO employee",
+                            "( id, code, created ) VALUES",
+                            "( :id, :code, :created )")
+                    .bind("id", 1)
+                    .bind("code", "T")
+                    .bind("created", someDate)
+                    .execute();
 
-        // Select
-        var selectSql = """
-                SELECT t.id, t.code, t.created
-                FROM employee t
-                WHERE t.id < :id
-                  AND t.code IN (:code)
-                ORDER BY t.id
-                """.stripIndent();
-        var selectArgs = Map.of("id", 10, "code", Arrays.asList("T", "V"));
-        try (var sql = new SqlParamBuilder(selectSql, selectArgs, dbConnection)) {
-            for (var rs : sql.executeSelect()) {
-                out.printf("id:%s, code:%s, created=%s %n".formatted(
-                      rs.getInt(1), rs.getString(2), rs.getObject(3)));
-            }
-            // New SELECT with modified SQL arguments:
-            sql.setParam("id", 100);
-            for (var rs : sql.executeSelect()) {
-                out.printf("id:%s, code:%s, created=%s %n".formatted(
-                        rs.getInt(1), rs.getString(2), rs.getObject(3)));
-            }
+            System.out.println("MULTI INSERT");
+            builder.sql("INSERT INTO employee",
+                            "(id,code,created) VALUES",
+                            "(:id1,:code,:created),",
+                            "(:id2,:code,:created)")
+                    .bind("id1", 2)
+                    .bind("id2", 3)
+                    .bind("code", "T")
+                    .bind("created", someDate.plusDays(1))
+                    .execute();
+            builder.bind("id1", 11)
+                    .bind("id2", 12)
+                    .bind("code", "V")
+                    .execute();
+
+            System.out.println("SELECT 1");
+            List<Employee> employees = builder.sql("SELECT t.id, t.name, t.created",
+                            "FROM employee t",
+                            "WHERE t.id < :id",
+                            "  AND t.code IN (:code)",
+                            "ORDER BY t.id")
+                    .bind("id", 10)
+                    .bind("code", "T", "V")
+                    .streamMap(rs -> new Employee(
+                            rs.getInt(1),
+                            rs.getString(2),
+                            rs.getObject(3, LocalDate.class)))
+                    .collect(Collectors.toList());
+            Assertions.assertEquals(3, employees.size());
+            Assertions.assertEquals(1, employees.get(0).id);
+            Assertions.assertEquals("test", employees.get(0).name);
+            Assertions.assertEquals(someDate, employees.get(0).created);
+
+            System.out.println("SELECT 2 (reuse the previous SELECT)");
+            List<Employee> employees2 = builder
+                    .bind("id", 100)
+                    .streamMap(rs -> new Employee(
+                            rs.getInt(1),
+                            rs.getString(2),
+                            rs.getObject(3, LocalDate.class)))
+                    .collect(Collectors.toList());
+            Assertions.assertEquals(5, employees2.size());
         }
     }
+
+    record Employee (int id, String name, LocalDate created) {}
 
     /** A utility class from the Ujorm framework */
     static class SqlParamBuilder implements Closeable {
 
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\]\\)]|$)");
-
-        private final String sqlTemplate;
-
-        private final Map<String, Object> params;
-
         private final Connection dbConnection;
-
+        private final Map<String, Object> params = new HashMap<>();
+        private String sqlTemplate = null;
         private PreparedStatement preparedStatement = null;
-
         private ResultSetWrapper rsWrapper = null;
 
-        public SqlParamBuilder(
-                 CharSequence sqlTemplate,
-                 Map<String, ?> params,
-                 Connection dbConnection) {
-            this.sqlTemplate = sqlTemplate.toString();
-            this.params = new HashMap<>(params);
+        public SqlParamBuilder(Connection dbConnection) {
             this.dbConnection = dbConnection;
         }
 
-        public SqlParamBuilder( CharSequence sqlTemplate, Connection dbConnection) {
-            this(sqlTemplate, new HashMap<>(), dbConnection);
+        /** Close statement (if any) and set a new SQL template */
+        public SqlParamBuilder sql(@NotNull String... sqlTemplates ) {
+            close();
+            this.sqlTemplate = sqlTemplates.length == 1
+                    ? sqlTemplates[0].toString() : String.join("\n", sqlTemplates);
+            return this;
+        }
+
+        /** Assign a SQL value(s) */
+        public SqlParamBuilder bind(@NotNull String key, @NotNull Object... value) {
+            this.params.put(key, value.length == 1 ? value[0] : List.of(value));
+            return this;
         }
 
         public Iterable<ResultSet> executeSelect() throws IllegalStateException, SQLException {
@@ -119,6 +136,17 @@ public final class SqlExecutor {
             }
             rsWrapper = new ResultSetWrapper(prepareStatement().executeQuery());
             return rsWrapper;
+        }
+
+        /** Iterate executed select */
+        public void forEach(SqlConsumer consumer) throws IllegalStateException, SQLException  {
+            for (ResultSet rs : executeSelect()) {
+                consumer.accept(rs);
+            }
+        }
+
+        public <R> Stream<R> streamMap(SqlFunction<ResultSet, ? extends R> mapper ) throws SQLException {
+            return StreamSupport.stream(executeSelect().spliterator(), false).map(mapper);
         }
 
         public int execute() throws IllegalStateException, SQLException {
@@ -183,10 +211,8 @@ public final class SqlExecutor {
             return result.toString();
         }
 
-        /** Set a SQL parameter */
-        public SqlParamBuilder setParam(String key, Object value) {
-            this.params.put(key, value);
-            return this;
+        public String sqlTemplate() {
+            return sqlTemplate;
         }
 
         @Override
@@ -196,7 +222,6 @@ public final class SqlExecutor {
 
         /** Based on the {@code RowIterator} class of Ujorm framework. */
         static final class ResultSetWrapper implements Iterable<ResultSet>, Iterator<ResultSet>, Closeable {
-
             private ResultSet resultSet;
             /** It the cursor ready for reading? After a row reading the value will be set to false */
             private boolean cursorReady = false;
@@ -210,11 +235,6 @@ public final class SqlExecutor {
             @Override
             public Iterator<ResultSet> iterator() {
                 return this;
-            }
-
-            @Override
-            public Spliterator<ResultSet> spliterator() {
-                throw new UnsupportedOperationException("Unsupported");
             }
 
             /** The last checking closes all resources. */
@@ -251,6 +271,34 @@ public final class SqlExecutor {
                 }
             }
         }
+    }
+
+    @FunctionalInterface
+    public interface SqlFunction<T, R> extends Function<T, R> {
+        default R apply(T resultSet) {
+            try {
+                return applyRs(resultSet);
+            } catch (SQLException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+
+        R applyRs(T resultSet) throws SQLException;
+    }
+
+    @FunctionalInterface
+    public interface SqlConsumer<T> extends Consumer<T> {
+
+        @Override
+        default void accept(final T t) {
+            try {
+                acceptResultSet(t);
+            } catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        void acceptResultSet(T t) throws SQLException;
     }
 
     record ConnectionProvider(String jdbcClass, String jdbcUrl, String user, String passwd) {
