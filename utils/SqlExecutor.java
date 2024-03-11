@@ -107,6 +107,24 @@ public final class SqlExecutor {
 
     record Employee (int id, String name, LocalDate created) {}
 
+    record ConnectionProvider(String jdbcClass, String jdbcUrl, String user, String passwd) {
+
+        Connection connection() throws SQLException {
+            try {
+                Class.forName(jdbcClass);
+                return DriverManager.getConnection(jdbcUrl, user, passwd);
+            } catch (ClassNotFoundException ex) {
+                throw new SQLException("Driver class not found: " + jdbcClass, ex);
+            }
+        }
+
+        public static ConnectionProvider forH2(String user, String passwd) {
+            return new ConnectionProvider("org.h2.Driver",
+                    "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+                    user, passwd);
+        }
+    }
+
     /** A utility class from the Ujorm framework */
     static class SqlParamBuilder implements Closeable {
 
@@ -278,51 +296,29 @@ public final class SqlExecutor {
                 }
             }
         }
-    }
 
-    @FunctionalInterface
-    public interface SqlFunction<T, R> extends Function<T, R> {
-        default R apply(T resultSet) {
-            try {
-                return applyRs(resultSet);
-            } catch (SQLException ex) {
-                throw new IllegalStateException(ex);
+
+        @FunctionalInterface
+        public interface SqlFunction<T, R> extends Function<T, R> {
+            default R apply(T resultSet) {
+                try { return applyRs(resultSet); } catch (SQLException ex) {
+                    throw new IllegalStateException(ex);
+                }
             }
+
+            R applyRs(T resultSet) throws SQLException;
         }
 
-        R applyRs(T resultSet) throws SQLException;
-    }
-
-    @FunctionalInterface
-    public interface SqlConsumer<T> extends Consumer<T> {
-
-        @Override
-        default void accept(final T t) {
-            try {
-                acceptResultSet(t);
-            } catch (SQLException e) {
-                throw new IllegalStateException(e);
+        @FunctionalInterface
+        public interface SqlConsumer<T> extends Consumer<T> {
+            @Override
+            default void accept(final T t) {
+                try { acceptResultSet(t); } catch (SQLException e) {
+                    throw new IllegalStateException(e);
+                }
             }
-        }
 
-        void acceptResultSet(T t) throws SQLException;
-    }
-
-    record ConnectionProvider(String jdbcClass, String jdbcUrl, String user, String passwd) {
-
-        Connection connection() throws SQLException {
-            try {
-                Class.forName(jdbcClass);
-                return DriverManager.getConnection(jdbcUrl, user, passwd);
-            } catch (ClassNotFoundException ex) {
-                throw new SQLException("Driver class not found: " + jdbcClass, ex);
-            }
-        }
-
-        public static ConnectionProvider forH2(String user, String passwd) {
-            return new ConnectionProvider("org.h2.Driver",
-                    "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-                    user, passwd);
+            void acceptResultSet(T t) throws SQLException;
         }
     }
 }
