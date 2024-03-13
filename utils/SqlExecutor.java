@@ -130,8 +130,10 @@ public final class SqlExecutor {
     }
 
     /**
-     * 170 lines long class to simplify working with JDBC.
+     * Less than 180 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/DirectoryBookmarks/blob/development/utils/SqlExecutor.java">GitHub</a>
+     * Licence: Apache License, Version 2.0
+     * @author Pavel Ponec, https://github.com/pponec
      * @version 1.0.5
      */
     static class SqlParamBuilder implements Closeable {
