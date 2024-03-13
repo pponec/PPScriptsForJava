@@ -150,11 +150,10 @@ public final class SqlExecutor {
         }
 
         /** Close statement (if any) and set a new SQL template */
-        public SqlParamBuilder sql(String... sqlTemplates ) {
+        public SqlParamBuilder sql(String... sqlLines) {
             close();
             this.params.clear();
-            this.sqlTemplate = sqlTemplates.length == 1
-                    ? sqlTemplates[0] : String.join("\n", sqlTemplates);
+            this.sqlTemplate = sqlLines.length == 1 ? sqlLines[0] : String.join("\n", sqlLines);
             return this;
         }
 
@@ -162,6 +161,10 @@ public final class SqlExecutor {
         public SqlParamBuilder bind(String key, Object... value) {
             this.params.put(key, value.length == 1 ? value[0] : List.of(value));
             return this;
+        }
+
+        public int execute() throws IllegalStateException, SQLException {
+            return prepareStatement().executeUpdate();
         }
 
         private ResultSet executeSelect() throws IllegalStateException {
@@ -177,7 +180,7 @@ public final class SqlExecutor {
             }
         }
 
-        /** Use a {@link #streamMap(SqlFunction)} rather */
+        /** Use the  {@link #streamMap(SqlFunction)} or {@link #forEach(SqlConsumer)} methods rather */
         private Stream<ResultSet> stream() {
             final var resultSet = executeSelect();
             final var iterator = new Iterator<ResultSet>() {
@@ -206,10 +209,6 @@ public final class SqlExecutor {
             return stream().map(mapper);
         }
 
-        public int execute() throws IllegalStateException, SQLException {
-            return prepareStatement().executeUpdate();
-        }
-
         public Connection getConnection() {
             return dbConnection;
         }
@@ -227,7 +226,7 @@ public final class SqlExecutor {
         }
 
         public PreparedStatement prepareStatement() throws SQLException {
-            final var sqlValues = new ArrayList<>();
+            final var sqlValues = new ArrayList<>(params.size());
             final var sql = buildSql(sqlValues, false);
             final var result = preparedStatement != null
                     ? preparedStatement
