@@ -130,11 +130,11 @@ public final class SqlExecutor {
     }
 
     /**
-     * Less than 180 lines long class to simplify work with JDBC.
+     * Less than 170 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/DirectoryBookmarks/blob/development/utils/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.0.5
+     * @version 1.0.6
      */
     static class SqlParamBuilder implements Closeable {
         /** SQL parameter mark type of {@code :param} */
@@ -143,7 +143,6 @@ public final class SqlExecutor {
         private final Map<String, Object> params = new HashMap<>();
         private String sqlTemplate = null;
         private PreparedStatement preparedStatement = null;
-        private ResultSet resultSet = null;
 
         public SqlParamBuilder(Connection dbConnection) {
             this.dbConnection = dbConnection;
@@ -167,14 +166,11 @@ public final class SqlExecutor {
             return prepareStatement().executeUpdate();
         }
 
+        /** A ResultSet object is automatically closed when the Statement object that generated it is closed,
+          * re-executed, or used to retrieve the next result from a sequence of multiple results. */
         private ResultSet executeSelect() throws IllegalStateException {
-            try (AutoCloseable rs = resultSet) {
-            } catch (Exception e) {
-                throw new IllegalStateException("Closing fails", e);
-            }
             try {
-                resultSet = prepareStatement().executeQuery();
-                return resultSet;
+                return prepareStatement().executeQuery();
             } catch (Exception ex) {
                 throw (ex instanceof RuntimeException re) ? re : new IllegalStateException(ex);
             }
@@ -216,11 +212,10 @@ public final class SqlExecutor {
         /** The method closes a PreparedStatement object with related objects, not the database connection. */
         @Override
         public void close() {
-            try (AutoCloseable c1 = resultSet; PreparedStatement c2 = preparedStatement) {
+            try (AutoCloseable c2 = preparedStatement) {
             } catch (Exception e) {
                 throw new IllegalStateException("Closing fails", e);
             } finally {
-                resultSet = null;
                 preparedStatement = null;
             }
         }
@@ -238,7 +233,7 @@ public final class SqlExecutor {
             return result;
         }
 
-        protected String buildSql( List<Object> sqlValues, boolean toLog) {
+        private String buildSql(List<Object> sqlValues, boolean toLog) {
             final var result = new StringBuilder(256);
             final var matcher = SQL_MARK.matcher(sqlTemplate);
             final var missingKeys = new HashSet<>();
@@ -256,7 +251,7 @@ public final class SqlExecutor {
                         sqlValues.add(values[i]);
                     }
                 } else {
-                    matcher.appendReplacement(result, Matcher.quoteReplacement(":" + key));
+                    matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group()));
                     missingKeys.add(key);
                 }
             }
