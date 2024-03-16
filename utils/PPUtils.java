@@ -486,42 +486,31 @@ public final class PPUtils {
             final var result = new HashMap<String, Object>();
             final var matcher = keyPattern.matcher(jsonString);
             while (matcher.find()) {
-                final var key = matcher.group(1);
-                final var value = parseValue(matcher.group(2));
-                result.put(key, value);
+                result.put(matcher.group(1), parseValue(matcher.group(2)));
             }
             return new Json(result);
         }
 
         private static Object parseValue(final String textValue) {
-            if (textValue.startsWith("\"") && textValue.endsWith("\"")) {
-                return textValue.substring(1, textValue.length() - 1);
-            } else if ("true".equals(textValue)) {
-                return true;
-            } else if ("false".equals(textValue)) {
-                return false;
-            } else if ("null".equals(textValue)) {
-                return null;
-            } else if (textValue.indexOf('.') >= 0) {
-                return Double.parseDouble(textValue);
-            } else if (textValue.startsWith("{")) {
-                return of(textValue);
-            } else {
-                return Long.parseLong(textValue);
-            }
+            return switch (textValue) {
+                case "true" -> true;
+                case "false" -> false;
+                case "null" -> null;
+                default -> textValue.charAt(0) == '"' && textValue.charAt(textValue.length() - 1) == '"'
+                        ? textValue.substring(1, textValue.length() - 1)
+                        : textValue.indexOf('.') >= 0 ? Double.parseDouble(textValue)
+                        : textValue.startsWith("{") ? of(textValue)
+                        : Long.parseLong(textValue);
+            };
         }
 
-        /** Sample: {@code json.get("a.b.c")} */
+        /** Get a value by the (composite) key. For example: {@code json.get("a.b.c").get()} */
         public Optional<Object> get(String keys) {
-            var json = this;
             var result = (Object) null;
+            var json = this;
             for (var key : keys.split("\\.")) {
                 result = json.map.get(key);
-                if (result instanceof Json j) {
-                    json = j;
-                } else {
-                    Optional.empty();
-                }
+                json = (result instanceof Json j) ? j : new Json(Map.of());
             }
             return Optional.ofNullable(result);
         }
