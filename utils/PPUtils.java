@@ -81,7 +81,7 @@ public final class PPUtils {
         var statement = args.getFirst().orElse("");
         switch (statement) {
             case "find" -> { // Example: find [--print] public.+interface java$
-                final var file = args.get(1).map(t -> Path.of(t)).get();
+                final var file = args.get(1).map(Path::of).get();
                 final var printLine = args.get(2).orElse("").equals("--print");
                 final var subArgs = args.subArray(2 + (printLine ? 1 : 0 ));
                 final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).orElse(null);
@@ -469,6 +469,61 @@ public final class PPUtils {
         @SuppressWarnings("unchecked")
         public static <T> Array<T> of(T... chars) {
             return new Array<T>(chars);
+        }
+    }
+
+    /** JSON parser */
+    public static class Json {
+        static final Pattern keyPattern = Pattern.compile("\"(.*?)\"\\s*:\\s*(\".*?\"|\\d+\\.?\\d*|true|false|null|\\{.*?\\})");
+        final Map<String, Object> map;
+
+        private Json(Map<String, Object> map) {
+            this.map = map;
+        }
+
+        /** JSON Parser */
+        public static Json of(String jsonString) {
+            final var result = new HashMap<String, Object>();
+            final var matcher = keyPattern.matcher(jsonString);
+            while (matcher.find()) {
+                final var key = matcher.group(1);
+                final var value = parseValue(matcher.group(2));
+                result.put(key, value);
+            }
+            return new Json(result);
+        }
+
+        private static Object parseValue(final String textValue) {
+            if (textValue.startsWith("\"") && textValue.endsWith("\"")) {
+                return textValue.substring(1, textValue.length() - 1);
+            } else if ("true".equals(textValue)) {
+                return true;
+            } else if ("false".equals(textValue)) {
+                return false;
+            } else if ("null".equals(textValue)) {
+                return null;
+            } else if (textValue.indexOf('.') >= 0) {
+                return Double.parseDouble(textValue);
+            } else if (textValue.startsWith("{")) {
+                return of(textValue);
+            } else {
+                return Long.parseLong(textValue);
+            }
+        }
+
+        /** Sample: {@code json.get("a.b.c")} */
+        public Optional<Object> get(String keys) {
+            var json = this;
+            var result = (Object) null;
+            for (var key : keys.split("\\.")) {
+                result = json.map.get(key);
+                if (result instanceof Json j) {
+                    json = j;
+                } else {
+                    Optional.empty();
+                }
+            }
+            return Optional.ofNullable(result);
         }
     }
 }
