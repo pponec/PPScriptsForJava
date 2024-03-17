@@ -1,5 +1,6 @@
 {
-  "devDependencies": {
-    "@types/node": "^20.10.5"
+  "name": "DirectoryBookmarks",
+  "version": "1.0.0",
+  "dependencies": {
   }
 }

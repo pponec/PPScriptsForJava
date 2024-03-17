@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PPUtilsTest {
+    private final String undef = "?";
 
     @Test
     void jsonTest() {
@@ -15,6 +16,7 @@ class PPUtilsTest {
                 , "d": true
                 , "e": null
                 , "f": { "g": "G", "h": 2 }
+                , "z": ["x", "y"]
                 }
                 """;
 
@@ -26,10 +28,12 @@ class PPUtilsTest {
         assertEquals(map.get("e").orElse(null), null);
         assertEquals(map.get("f.g").get(), "G");
         assertEquals(map.get("f.h").get(), 2L);
+        assertEquals(map.get("f").get().toString(), "{g=G, h=2}");
 
-        assertEquals(map.get("x").orElse("X"), "X");
-        assertEquals(map.get("x.y").orElse("Y"), "Y");
-        assertEquals(map.get("a.z").orElse("Z"), "Z");
+        assertEquals(map.get("x").orElse(undef), undef);
+        assertEquals(map.get("x.y").orElse(undef), undef);
+        assertEquals(map.get("a.z").orElse(undef), undef);
+        assertEquals(map.get("z").orElse(undef), undef);
     }
 
 }

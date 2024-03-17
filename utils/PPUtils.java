@@ -120,6 +120,11 @@ public final class PPUtils {
             case "base64decode" -> {
                 new Converters(out).convertBase64(args.get(1).orElse(""), false);
             }
+            case "json" -> {
+                final var key = args.get(1).orElse("");
+                final var json = Files.readString(Path.of(args.get(2).orElse("?")));
+                out.println(Json.of(json).get(key).orElse(""));
+            }
             case "upgrade" -> {
                 new Utilities().download();
             }
@@ -271,7 +276,7 @@ public final class PPUtils {
         /** Compile the script and build it to the executable JAR file */
         private void compile() throws Exception {
             if (isJar()) {
-                System.out.printf("Use the statement rather: java %s.java c %s".formatted(appName));
+                out.printf("Use the statement rather: java %s.java c %s".formatted(appName));
                 System.exit(1);
             }
 
@@ -379,7 +384,7 @@ public final class PPUtils {
 
         private void removePackage(Path fullJavaClass) throws IOException {
             var packageRegexp = "package %s;".formatted(mainClass.getPackageName());
-            System.out.println("packageRegexp: "  + packageRegexp);
+            out.println("packageRegexp: "  + packageRegexp);
             var script = Files.readString(fullJavaClass);
             script = script.replaceFirst(packageRegexp, "");
             Files.writeString(fullJavaClass, script);
@@ -472,7 +477,7 @@ public final class PPUtils {
         }
     }
 
-    /** JSON parser */
+    /** JSON parser. The {@code array} type is not supported. */
     public static class Json {
         static final Pattern keyPattern = Pattern.compile("\"(.*?)\"\\s*:\\s*(\".*?\"|\\d+\\.?\\d*|true|false|null|\\{.*?\\})");
         final Map<String, Object> map;
@@ -513,6 +518,11 @@ public final class PPUtils {
                 json = (result instanceof Json j) ? j : new Json(Map.of());
             }
             return Optional.ofNullable(result);
+        }
+
+        @Override
+        public String toString() {
+            return map.toString();
         }
     }
 }
