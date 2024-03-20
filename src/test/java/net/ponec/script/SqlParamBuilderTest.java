@@ -14,14 +14,14 @@
  *  limitations under the License.
  */
 
-package utils;
+package net.ponec.script;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
-import utils.SqlExecutor.SqlParamBuilder;
+import net.ponec.script.SqlExecutor.SqlParamBuilder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -92,7 +92,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
                     .toList();
-            Assertions.assertEquals(3, employees.size());
+            assertEquals(3, employees.size());
             Assertions.assertEquals(1, employees.get(0).id);
             Assertions.assertEquals("test", employees.get(0).name);
             Assertions.assertEquals(someDate, employees.get(0).created);
@@ -105,7 +105,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
                     .toList();
-            Assertions.assertEquals(5, employees2.size());
+            assertEquals(5, employees2.size());
         }
     }
 

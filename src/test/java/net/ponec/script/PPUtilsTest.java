@@ -1,4 +1,4 @@
-package utils;
+package net.ponec.script;
 
 import org.junit.jupiter.api.Test;
 

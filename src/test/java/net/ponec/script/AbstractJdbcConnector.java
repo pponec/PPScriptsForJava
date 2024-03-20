@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package utils;
+package net.ponec.script;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

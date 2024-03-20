@@ -16,7 +16,7 @@
  * Licence: Apache License, Version 2.0
  */
 
-package utils;
+package net.ponec.script;
 
 import javax.tools.ToolProvider;
 import java.io.*;

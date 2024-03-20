@@ -1,6 +1,8 @@
 // The test must be compiled to the run.
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
 
+package net.ponec.script;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;

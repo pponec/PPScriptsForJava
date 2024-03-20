@@ -3,7 +3,7 @@
 // Home Page: https://github.com/pponec/DirectoryBookmarks/blob/development/utils/Mp3PlayerGenerator.java
 // License: Apache License, Version 2.0
 
-package utils;
+package net.ponec.script;
 
 import java.io.File;
 import java.nio.charset.Charset;

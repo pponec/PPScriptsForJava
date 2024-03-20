@@ -5,7 +5,7 @@
  * Environment: Java 17+ with JDBC driver com.h2database:h2:2.2.224 are required.
  * Licence: Apache License, Version 2.0, Pavel Ponec, https://github.com/pponec/DirectoryBookmarks
  */
-package utils;
+package net.ponec.script;
 
 import java.io.Closeable;
 import java.sql.*;
