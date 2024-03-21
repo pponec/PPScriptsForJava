@@ -35,8 +35,8 @@ public class Mp3PlayerGenerator {
     }
 
     void printHelpAndExit() {
-        System.out.println("Script '%s' v%s (%s)".formatted(appName, appVersion, homePage));
-        System.out.println("Usage version: %s".formatted(appName));
+        System.out.printf("Script '%s' v%s (%s)%n", appName, appVersion, homePage);
+        System.out.printf("Usage version: %s%n", appName);
         System.exit(1);
     }
 
@@ -65,7 +65,7 @@ public class Mp3PlayerGenerator {
                 .filter(file -> file.isFile())
                 .map   (file -> file.getName())
                 .filter(file -> filePattern.matcher(file).find())
-                .sorted(Comparator.comparing(file -> removeDiacritics(file)))
+                .sorted(Comparator.comparing(this::removeDiacritics))
                 .toList();
     }
 

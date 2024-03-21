@@ -55,11 +55,11 @@ public final class DirectoryBookmarks {
                 System.err, enforcedLinux, false).start(args);
     }
 
-    protected DirectoryBookmarks(File storeName,
-                                 PrintStream out,
-                                 PrintStream err,
-                                 boolean enforcedLinux,
-                                 boolean exitByException) {
+    DirectoryBookmarks(File storeName,
+                       PrintStream out,
+                       PrintStream err,
+                       boolean enforcedLinux,
+                       boolean exitByException) {
         this.storeName = storeName;
         this.out = out;
         this.err = err;
@@ -474,7 +474,7 @@ public final class DirectoryBookmarks {
             result.add(mainClass.getSimpleName() + suffix);
             Stream.of(mainClass.getDeclaredClasses())
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
-                    .forEach(c -> result.add(c));
+                    .forEach(result::add);
             return result.toArray(String[]::new);
         }
 
@@ -501,14 +501,9 @@ public final class DirectoryBookmarks {
     }
 
     /** The immutable Array wrapper (from the Ujorm framework) */
-    static class Array<T> {
-        protected final T[] array;
+    public record Array<T>(T[] array) {
 
-        public Array(T[] array) {
-            this.array = array;
-        }
-
-        /** Negative index is supported */
+        /**  Negative index is supported */
         public Optional<T> get(final int i) {
             final var j = i >= 0 ? i : array.length + i;
             return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
@@ -556,7 +551,7 @@ public final class DirectoryBookmarks {
         @SuppressWarnings("unchecked")
         public T[] toArray() {
             final var type = array.getClass().getComponentType();
-            final var result =  java.lang.reflect.Array.newInstance(type, array.length);
+            final var result = java.lang.reflect.Array.newInstance(type, array.length);
             System.arraycopy(array, 0, result, 0, array.length);
             return (T[]) result;
         }
@@ -580,7 +575,7 @@ public final class DirectoryBookmarks {
 
         @SuppressWarnings("unchecked")
         public static <T> Array<T> of(T... chars) {
-            return new Array<T>(chars);
+            return new Array<>(chars);
         }
     }
 }

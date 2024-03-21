@@ -58,9 +58,9 @@ public final class PPUtils {
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
-    protected static final String grepSeparator = ":";
+    private static final String grepSeparator = ":";
 
-    protected static final boolean sortDirectoryLast = true;
+    private static final boolean sortDirectoryLast = true;
 
     private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/utils/%s.java"
             .formatted(!true ? "main" : "development", appName);
@@ -84,18 +84,16 @@ public final class PPUtils {
                 final var file = args.get(1).map(Path::of).get();
                 final var printLine = args.get(2).orElse("").equals("--print");
                 final var subArgs = args.subArray(2 + (printLine ? 1 : 0 ));
-                final var bodyPattern = subArgs.get(-2).map(t -> Pattern.compile(t)).orElse(null);
-                final var filePattern = subArgs.get(-1).map(t -> Pattern.compile(t)).orElse(null);
+                final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
+                final var filePattern = subArgs.get(-1).map(Pattern::compile).orElse(null);
                 new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out)
                         .findFiles(file, printLine && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 3) {
-                    final var bodyPattern = args.get(2).map(t -> Pattern.compile(t)).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var bodyPattern = args.get(2).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
                     final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
-                    args.stream().skip(3).forEach(file -> {
-                        pathFinder.grep(Path.of(file), true);
-                    });
+                    args.stream().skip(3).forEach(file -> pathFinder.grep(Path.of(file), true));
                 }
             }
             case "date" -> {
@@ -186,7 +184,7 @@ public final class PPUtils {
                     os.write(b2);
                 }
             }
-            out.println("Converted file has a name: '%s'".formatted(outFile));
+            out.printf("Converted file has a name: '%s'%n", outFile);
         }
     }
 
@@ -245,7 +243,7 @@ public final class PPUtils {
         }
 
         /** Method supports a GitBash shell. */
-        protected PrintStream printFileName(Path path) {
+        private PrintStream printFileName(Path path) {
             if (enforcedLinux) {
                 out.print(path.toString().replace('\\', '/'));
             } else {
@@ -264,7 +262,7 @@ public final class PPUtils {
             if (d1 != d2) {
                 return d1 ? 1 : -1;
             } else {
-                return p1.getFileName().toString().compareTo(p1.getFileName().toString());
+                return p1.getFileName().toString().compareTo(p2.getFileName().toString());
             }
         }
     }
@@ -276,7 +274,7 @@ public final class PPUtils {
         /** Compile the script and build it to the executable JAR file */
         private void compile() throws Exception {
             if (isJar()) {
-                out.printf("Use the statement rather: java %s.java c %s".formatted(appName));
+                out.printf("Use the statement rather: java %s.java c %s", appName);
                 System.exit(1);
             }
 
@@ -365,7 +363,7 @@ public final class PPUtils {
             result.add(mainClass.getSimpleName() + suffix);
             Stream.of(mainClass.getDeclaredClasses())
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
-                    .forEach(c -> result.add(c));
+                    .forEach(result::add);
             return result.toArray(String[]::new);
         }
 
@@ -393,89 +391,84 @@ public final class PPUtils {
 
 
     /** The immutable Array wrapper with utilities (from the Ujorm framework) */
-    static class Array<T> {
-        protected final T[] array;
-
-        public Array(T[] array) {
-            this.array = array;
-        }
+        record Array<T>(T[] array) {
 
         /** Negative index is supported */
-        public Optional<T> get(final int i) {
-            final var j = i >= 0 ? i : array.length + i;
-            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
-        }
+            public Optional<T> get(final int i) {
+                final var j = i >= 0 ? i : array.length + i;
+                return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
+            }
 
-        /** Add new items to the new Array */
-        @SuppressWarnings("unchecked")
-        public Array<T> add(final T... toAdd) {
-            final var result = Arrays.copyOf(array, array.length + toAdd.length);
-            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
-            return new Array<>(result);
-        }
+            /** Add new items to the new Array */
+            @SuppressWarnings("unchecked")
+            public Array<T> add(final T... toAdd) {
+                final var result = Arrays.copyOf(array, array.length + toAdd.length);
+                System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
+                return new Array<>(result);
+            }
 
-        /** Negative index is supported */
-        public T getItem(final int i) {
-            return array[i >= 0 ? i : array.length + i];
-        }
+            /** Negative index is supported */
+            public T getItem(final int i) {
+                return array[i >= 0 ? i : array.length + i];
+            }
 
-        public Optional<T> getFirst() {
-            return get(0);
-        }
+            public Optional<T> getFirst() {
+                return get(0);
+            }
 
-        public Optional<T> getLast() {
-            return get(-1);
-        }
+            public Optional<T> getLast() {
+                return get(-1);
+            }
 
-        public Array<T> removeFirst() {
-            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
-            return new Array<>(result);
-        }
+            public Array<T> removeFirst() {
+                final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
+                return new Array<>(result);
+            }
 
-        public Array<T> subArray(final int from) {
-            final var from2 = Math.min(from, array.length);
-            final var result = Arrays.copyOfRange(array, from2, array.length);
-            return new Array<>(result);
-        }
+            public Array<T> subArray(final int from) {
+                final var from2 = Math.min(from, array.length);
+                final var result = Arrays.copyOfRange(array, from2, array.length);
+                return new Array<>(result);
+            }
 
-        public List<T> toList() {
-            return List.of(array);
-        }
+            public List<T> toList() {
+                return List.of(array);
+            }
 
-        public Stream<T> stream() {
-            return Stream.of(array);
-        }
+            public Stream<T> stream() {
+                return Stream.of(array);
+            }
 
-        @SuppressWarnings("unchecked")
-        public T[] toArray() {
-            final var type = array.getClass().getComponentType();
-            final var result =  java.lang.reflect.Array.newInstance(type, array.length);
-            System.arraycopy(array, 0, result, 0, array.length);
-            return (T[]) result;
-        }
+            @SuppressWarnings("unchecked")
+            public T[] toArray() {
+                final var type = array.getClass().getComponentType();
+                final var result = (T[]) java.lang.reflect.Array.newInstance(type, array.length);
+                System.arraycopy(array, 0, result, 0, array.length);
+                return  result;
+            }
 
-        public boolean isEmpty() {
-            return array.length == 0;
-        }
+            public boolean isEmpty() {
+                return array.length == 0;
+            }
 
-        public boolean hasLength() {
-            return array.length > 0;
-        }
+            public boolean hasLength() {
+                return array.length > 0;
+            }
 
-        public int size() {
-            return array.length;
-        }
+            public int size() {
+                return array.length;
+            }
 
-        @Override
-        public String toString() {
-            return List.of(array).toString();
-        }
+            @Override
+            public String toString() {
+                return List.of(array).toString();
+            }
 
-        @SuppressWarnings("unchecked")
-        public static <T> Array<T> of(T... chars) {
-            return new Array<T>(chars);
+            @SuppressWarnings("unchecked")
+            public static <T> Array<T> of(T... chars) {
+                return new Array<>(chars);
+            }
         }
-    }
 
     /** JSON parser. The {@code array} type is not supported. */
     public static class Json {
