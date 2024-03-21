@@ -32,7 +32,7 @@ public final class SqlExecutor {
 
     void mainStart(Connection dbConnection) throws Exception {
         try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
-            // CREATE TABLE:
+            System.out.println("# CREATE TABLE");
             builder.sql("""
                             CREATE TABLE employee
                             ( id INTEGER PRIMARY KEY
@@ -42,7 +42,7 @@ public final class SqlExecutor {
                             )""")
                     .execute();
 
-            // SINGLE INSERT:
+            System.out.println("# SINGLE INSERT");
             builder.sql("""
                             INSERT INTO employee
                             ( id, code, created ) VALUES
@@ -53,7 +53,7 @@ public final class SqlExecutor {
                     .bind("created", someDate)
                     .execute();
 
-            // MULTI INSERT:
+            System.out.println("# MULTI INSERT");
             builder.sql("""
                             INSERT INTO employee
                             (id,code,created) VALUES
@@ -63,14 +63,14 @@ public final class SqlExecutor {
                     .bind("id1", 2)
                     .bind("id2", 3)
                     .bind("code", "T")
-                    .bind("created", someDate.plusDays(1))
+                    .bind("created", someDate.plusDays(7))
                     .execute();
             builder.bind("id1", 11)
                     .bind("id2", 12)
                     .bind("code", "V")
                     .execute();
 
-            // SELECT 1:
+            System.out.println("# SELECT");
             List<Employee> employees = builder.sql("""
                             SELECT t.id, t.name, t.created
                             FROM employee t
@@ -91,7 +91,7 @@ public final class SqlExecutor {
             assertEquals("test", employees.get(0).name);
             assertEquals(someDate, employees.get(0).created);
 
-            // REUSE THE SELECT:
+            System.out.println("# REUSE THE SELECT\n");
             List<Employee> employees2 = builder
                     .bind("id", 100)
                     .streamMap(rs -> new Employee(
@@ -100,6 +100,7 @@ public final class SqlExecutor {
                             rs.getObject(3, LocalDate.class)))
                     .toList();
             assertEquals(5, employees2.size());
+            employees2.stream().forEach(System.out::println);
         }
     }
 
