@@ -503,7 +503,7 @@ public final class DirectoryBookmarks {
     /** The immutable Array wrapper (from the Ujorm framework) */
     public record Array<T>(T[] array) {
 
-        /**  Negative index is supported */
+        /** Negative index is supported */
         public Optional<T> get(final int i) {
             final var j = i >= 0 ? i : array.length + i;
             return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);

@@ -18,6 +18,7 @@
 
 package net.ponec.script;
 
+import org.jetbrains.annotations.NotNull;
 import javax.tools.ToolProvider;
 import java.io.*;
 import java.net.URI;
@@ -37,13 +38,16 @@ import java.util.stream.Stream;
 /**
  * Usage and examples:
  * <ul>
- *    <li>{@code java PPUtils find main.*String java$ } - find readable files by regular expressions.</li>
+ *    <li>{@code java PPUtils find main.*String java$ } - find readable files by regular expressions. Partial compliance is assessed.</li>
  *    <li>{@code java PPUtils grep main.*String PPUtils.java } - find readable file rows by a regular expression.</li>
  *    <li>{@code java PPUtils date} - prints a date by ISO format, for example: "2023-12-31"</li>
  *    <li>{@code java PPUtils time} - prints hours and time, for example "2359"</li>
  *    <li>{@code java PPUtils datetime} - prints datetime format "2023-12-31T2359"</li>
  *    <li>{@code java PPUtils date-iso} - prints datetime by ISO format, eg: "2023-12-31T23:59:59.999"</li>
  *    <li>{@code java PPUtils date-format "yyyy-MM-dd'T'HH:mm:ss.SSS"} - prints a time by a custom format</li>
+ *    <li>{@code java PPUtils base64encode "file.bin"} - encode any (binary) file.</li>
+ *    <li>{@code java PPUtils base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
+ *    <li>{@code java PPUtils key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
  * </ul>
  */
 public final class PPUtils {
@@ -103,7 +107,7 @@ public final class PPUtils {
                 out.println(currentDate("HHmm"));
             }
             case "datetime" -> {
-                out.println(currentDate("yyyy-MM'T'HHmm"));
+                out.println(currentDate("yyyy-MM-dd'T'HHmm"));
             }
             case "date-iso" -> {
                 out.println(currentDate(dateIsoFormat));
@@ -391,84 +395,100 @@ public final class PPUtils {
 
 
     /** The immutable Array wrapper with utilities (from the Ujorm framework) */
-        record Array<T>(T[] array) {
+    record Array<T>(T[] array) {
+
+        @NotNull
+        public Array<T> clone() {
+            return new Array<>(toArray());
+        }
 
         /** Negative index is supported */
-            public Optional<T> get(final int i) {
-                final var j = i >= 0 ? i : array.length + i;
-                return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
-            }
-
-            /** Add new items to the new Array */
-            @SuppressWarnings("unchecked")
-            public Array<T> add(final T... toAdd) {
-                final var result = Arrays.copyOf(array, array.length + toAdd.length);
-                System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
-                return new Array<>(result);
-            }
-
-            /** Negative index is supported */
-            public T getItem(final int i) {
-                return array[i >= 0 ? i : array.length + i];
-            }
-
-            public Optional<T> getFirst() {
-                return get(0);
-            }
-
-            public Optional<T> getLast() {
-                return get(-1);
-            }
-
-            public Array<T> removeFirst() {
-                final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
-                return new Array<>(result);
-            }
-
-            public Array<T> subArray(final int from) {
-                final var from2 = Math.min(from, array.length);
-                final var result = Arrays.copyOfRange(array, from2, array.length);
-                return new Array<>(result);
-            }
-
-            public List<T> toList() {
-                return List.of(array);
-            }
-
-            public Stream<T> stream() {
-                return Stream.of(array);
-            }
-
-            @SuppressWarnings("unchecked")
-            public T[] toArray() {
-                final var type = array.getClass().getComponentType();
-                final var result = (T[]) java.lang.reflect.Array.newInstance(type, array.length);
-                System.arraycopy(array, 0, result, 0, array.length);
-                return  result;
-            }
-
-            public boolean isEmpty() {
-                return array.length == 0;
-            }
-
-            public boolean hasLength() {
-                return array.length > 0;
-            }
-
-            public int size() {
-                return array.length;
-            }
-
-            @Override
-            public String toString() {
-                return List.of(array).toString();
-            }
-
-            @SuppressWarnings("unchecked")
-            public static <T> Array<T> of(T... chars) {
-                return new Array<>(chars);
-            }
+        public Optional<T> get(final int i) {
+            final var j = i >= 0 ? i : array.length + i;
+            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
         }
+
+        /** Add new items to the new Array */
+        @SuppressWarnings("unchecked")
+        public Array<T> add(final T... toAdd) {
+            final var result = Arrays.copyOf(array, array.length + toAdd.length);
+            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
+            return new Array<>(result);
+        }
+
+        /** Negative index is supported */
+        public T getItem(final int i) {
+            return array[i >= 0 ? i : array.length + i];
+        }
+
+        public Optional<T> getFirst() {
+            return get(0);
+        }
+
+        public Optional<T> getLast() {
+            return get(-1);
+        }
+
+        public Array<T> removeFirst() {
+            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
+            return new Array<>(result);
+        }
+
+        /** @param from Negative value is supported */
+        public Array<T> subArray(final int from) {
+            final var frm = from < 0 ? array.length - from : from;
+            final var result = Arrays.copyOfRange(array, Math.min(frm, array.length), array.length);
+            return new Array<>(result);
+        }
+
+        public List<T> toList() {
+            return List.of(array);
+        }
+
+        public Stream<T> stream() {
+            return Stream.of(array);
+        }
+
+        @SuppressWarnings("unchecked")
+        public T[] toArray() {
+            final var type = array.getClass().getComponentType();
+            final var result = (T[]) java.lang.reflect.Array.newInstance(type, array.length);
+            System.arraycopy(array, 0, result, 0, array.length);
+            return result;
+        }
+
+        public boolean isEmpty() {
+            return array.length == 0;
+        }
+
+        public boolean hasLength() {
+            return array.length > 0;
+        }
+
+        public int size() {
+            return array.length;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(array);
+        }
+
+        @Override
+        public boolean equals(@NotNull final Object obj) {
+            return (obj instanceof Array objArray) && Arrays.equals(array, objArray.array);
+        }
+
+        @Override
+        public String toString() {
+            return List.of(array).toString();
+        }
+
+        @SuppressWarnings("unchecked")
+        public static <T> Array<T> of(T... chars) {
+            return new Array<>(chars);
+        }
+    }
 
     /** JSON parser. The {@code array} type is not supported. */
     public static class Json {
