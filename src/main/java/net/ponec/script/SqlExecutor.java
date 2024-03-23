@@ -38,8 +38,8 @@ public final class SqlExecutor {
                             ( id INTEGER PRIMARY KEY
                             , name VARCHAR(256) DEFAULT 'test'
                             , code VARCHAR(1)
-                            , created DATE NOT NULL
-                            )""")
+                            , created DATE NOT NULL )
+                            """)
                     .execute();
 
             System.out.println("# SINGLE INSERT");
@@ -81,26 +81,24 @@ public final class SqlExecutor {
                     .bind("id", 10)
                     .bind("code", "T", "V")
                     .streamMap(rs -> new Employee(
-                            rs.getInt(1),
-                            rs.getString(2),
-                            rs.getObject(3, LocalDate.class)))
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getObject("created", LocalDate.class)))
                     .toList();
+            System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine());
+            employees.stream().forEach(System.out::println);
 
             assertEquals(3, employees.size());
             assertEquals(1, employees.get(0).id);
             assertEquals("test", employees.get(0).name);
             assertEquals(someDate, employees.get(0).created);
-
-            System.out.println("# REUSE THE SELECT\n");
-            List<Employee> employees2 = builder
-                    .bind("id", 100)
-                    .streamMap(rs -> new Employee(
-                            rs.getInt(1),
-                            rs.getString(2),
-                            rs.getObject(3, LocalDate.class)))
-                    .toList();
-            assertEquals(5, employees2.size());
-            employees2.stream().forEach(System.out::println);
+            assertEquals( """
+                    SELECT t.id, t.name, t.created
+                    FROM employee t
+                    WHERE t.id < [10]
+                      AND t.code IN ([T],[V])
+                    ORDER BY t.id
+                    """, builder.toString());
         }
     }
 
@@ -132,16 +130,16 @@ public final class SqlExecutor {
 
     /**
      * Less than 170 lines long class to simplify work with JDBC.
-     * Original source: <a href="https://github.com/pponec/DirectoryBookmarks/blob/development/utils/SqlExecutor.java">GitHub</a>
+     * Original source: <a href="https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.0.6
+     * @version 1.0.7
      */
     static class SqlParamBuilder implements Closeable {
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
-        private final Map<String, Object> params = new HashMap<>();
+        private final Map<String, Object[]> params = new HashMap<>();
         private String sqlTemplate = null;
         private PreparedStatement preparedStatement = null;
 
@@ -152,14 +150,13 @@ public final class SqlExecutor {
         /** Close statement (if any) and set a new SQL template */
         public SqlParamBuilder sql(String... sqlLines) {
             close();
-            this.params.clear();
-            this.sqlTemplate = sqlLines.length == 1 ? sqlLines[0] : String.join("\n", sqlLines);
+            sqlTemplate = sqlLines.length == 1 ? sqlLines[0] : String.join("\n", sqlLines);
             return this;
         }
 
-        /** Assign a SQL value(s) */
-        public SqlParamBuilder bind(String key, Object... value) {
-            this.params.put(key, value.length == 1 ? value[0] : List.of(value));
+        /** Assign a SQL value(s). In case a reused statement set the same number of parameters items. */
+        public SqlParamBuilder bind(String key, Object... values) {
+            params.put(key, values.length > 0 ? values : new Object[]{null});
             return this;
         }
 
@@ -218,11 +215,12 @@ public final class SqlExecutor {
                 throw new IllegalStateException("Closing fails", e);
             } finally {
                 preparedStatement = null;
+                params.clear();
             }
         }
 
         public PreparedStatement prepareStatement() throws SQLException {
-            final var sqlValues = new ArrayList<>(params.size());
+            final var sqlValues = new ArrayList<>();
             final var sql = buildSql(sqlValues, false);
             final var result = preparedStatement != null
                     ? preparedStatement
@@ -230,7 +228,7 @@ public final class SqlExecutor {
             for (int i = 0, max = sqlValues.size(); i < max; i++) {
                 result.setObject(i + 1, sqlValues.get(i));
             }
-            this.preparedStatement = result;
+            preparedStatement = result;
             return result;
         }
 
@@ -238,14 +236,11 @@ public final class SqlExecutor {
             final var result = new StringBuilder(256);
             final var matcher = SQL_MARK.matcher(sqlTemplate);
             final var missingKeys = new HashSet<>();
-            final var singleValue = new Object[1];
             while (matcher.find()) {
                 final var key = matcher.group(1);
-                final var value = params.get(key);
-                if (value != null) {
+                final var values = params.get(key);
+                if (values != null) {
                     matcher.appendReplacement(result, "");
-                    singleValue[0] = value;
-                    final Object[] values = value instanceof List ? ((List<?>) value).toArray() : singleValue;
                     for (int i = 0; i < values.length; i++) {
                         if (i > 0) result.append(',');
                         result.append(Matcher.quoteReplacement(toLog ? "[" + values[i] + "]" : "?"));
@@ -270,6 +265,10 @@ public final class SqlExecutor {
         @Override
         public String toString() {
             return buildSql(new ArrayList<>(), true);
+        }
+
+        public String toStringLine() {
+            return toString().replaceAll("\\s*\\R+\\s*", " ");
         }
 
         @FunctionalInterface
