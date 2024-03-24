@@ -6,7 +6,6 @@
  */
 package net.ponec.scriptKt
 
-import java.io.Closeable
 import java.sql.*
 import java.time.LocalDate
 import java.util.*
@@ -23,17 +22,15 @@ class SqlExecutorKt {
 
     companion object Static {
         private val db = ConnectionProvider.forH2("user", "pwd")
-        @Throws(Exception::class)
-        @JvmStatic
+        @JvmStatic @Throws(Exception::class)
         fun main(args: Array<String>) {
             println("args: [${args.joinToString()}]")
             db.connection().use { SqlExecutorKt().mainStart(it) }
         }
     }
 
-    @Throws(Exception::class)
     fun mainStart(dbConnection: Connection) {
-        SqlParamBuilder(dbConnection).use { builder ->
+        SqlParamBuilderKt(dbConnection).use { builder ->
 
             println("# CREATE TABLE")
             builder.sql("""
@@ -42,8 +39,8 @@ class SqlExecutorKt {
                             , name VARCHAR(256) DEFAULT 'test'
                             , code VARCHAR(1)
                             , created DATE NOT NULL )
-                            """.trimIndent()
-            ).execute()
+                            """.trimIndent())
+                .execute()
 
             println("# SINGLE INSERT")
             builder.sql("""
@@ -74,25 +71,22 @@ class SqlExecutorKt {
                 .execute()
 
             println("# SELECT")
-            val employees = builder.sql("""
+            val employees: List<Employee> = builder.sql("""
                             SELECT t.id, t.name, t.created
                             FROM employee t
                             WHERE t.id < :id
                               AND t.code IN (:code)
                             ORDER BY t.id
-                            """.trimIndent()
-            )
+                            """.trimIndent())
                 .bind("id", 10)
                 .bind("code", "T", "V")
                 .streamMap { Employee(
                         it.getInt("id"),
                         it.getString("name"),
-                        it.getObject("created", LocalDate::class.java)
-                    )
-                }
+                        it.getObject("created", LocalDate::class.java)) }
                 .toList()
-            System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine())
-            employees.stream().forEach { x: Employee? -> println(x) }
+            println("# PRINT RESULT OF: ${builder.toStringLine()}")
+            employees.stream().forEach { employee: Employee -> println(employee) }
             assertEquals(3, employees.size)
             assertEquals(1, employees[0].id)
             assertEquals("test", employees[0].name)
@@ -103,8 +97,7 @@ class SqlExecutorKt {
                     WHERE t.id < [10]
                       AND t.code IN ([T],[V])
                     ORDER BY t.id
-                    """.trimIndent(), builder.toString()
-            )
+                    """.trimIndent(), builder.toString())
         }
     }
 
@@ -139,40 +132,36 @@ class SqlExecutorKt {
     }
 
     /**
-     * Less than 140 lines long class to simplify work with JDBC.
+     * Less than 130 lines long class to simplify work with JDBC.
      * Original source: [GitHub](https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.java)
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
      * @version 1.0.7
      */
-    internal class SqlParamBuilder(private val connection: Connection
-    ) : Closeable {
+    internal class SqlParamBuilderKt(private val connection: Connection) : AutoCloseable {
         private val params: MutableMap<String, Array<out Any?>> = HashMap()
         private val sqlParameterMark = Pattern.compile(":(\\w+)")
-        private var sqlTemplate: String = ""
+        var sqlTemplate: String = ""; private set
         private var preparedStatement: PreparedStatement? = null
 
-        /** Close statement (if any) and set a new SQL template  */
-        fun sql(vararg sqlLines: String): SqlParamBuilder {
+        /** Close statement (if any) and set the new SQL template  */
+        fun sql(vararg sqlLines: String): SqlParamBuilderKt {
             close()
             sqlTemplate = if (sqlLines.size == 1) sqlLines[0] else sqlLines.joinToString("\n")
             return this
         }
 
         /** Assign a SQL value(s). In case a reused statement set the same number of parameters items.  */
-        fun bind(key: String, vararg values: Any?): SqlParamBuilder {
+        fun bind(key: String, vararg values: Any?): SqlParamBuilderKt {
             params[key] = if (values.isNotEmpty()) values else arrayOfNulls(1)
             return this
         }
 
-        @Throws(IllegalStateException::class, SQLException::class)
-        fun execute(): Int {
-            return prepareStatement().executeUpdate()
-        }
+        fun execute(): Int =
+            prepareStatement().executeUpdate()
 
         /** A ResultSet object is automatically closed when the Statement object that generated it is closed,
          * re-executed, or used to retrieve the next result from a sequence of multiple results.  */
-        @Throws(IllegalStateException::class)
         private fun executeSelect(): ResultSet {
             return try {
                 prepareStatement().executeQuery()
@@ -201,14 +190,11 @@ class SqlExecutorKt {
         }
 
         /** Iterate executed select  */
-        @Throws(IllegalStateException::class, SQLException::class)
-        fun forEach(consumer: (ResultSet) -> Unit) {
+        fun forEach(consumer: (ResultSet) -> Unit) =
             stream().forEach(consumer)
-        }
 
-        fun <R> streamMap(mapper: (ResultSet) -> R): Stream<R> {
-            return stream().map(mapper)
-        }
+        fun <R> streamMap(mapper: (ResultSet) -> R): Stream<R> =
+            stream().map(mapper)
 
         /** The method closes a PreparedStatement object with related objects, not the database connection.  */
         override fun close() {
@@ -237,7 +223,7 @@ class SqlExecutorKt {
         private fun buildSql(sqlValues: MutableList<Any?>, toLog: Boolean): String {
             val result = StringBuilder(256)
             val matcher = sqlParameterMark.matcher(sqlTemplate)
-            val missingKeys = HashSet<Any>()
+            val missingKeys = mutableSetOf<Any>()
             while (matcher.find()) {
                 val key = matcher.group(1)
                 val values = params[key]
@@ -245,7 +231,7 @@ class SqlExecutorKt {
                     matcher.appendReplacement(result, "")
                     for (i in values.indices) {
                         if (i > 0) result.append(',')
-                        result.append(Matcher.quoteReplacement(if (toLog) "[" + values[i] + "]" else "?"))
+                        result.append(Matcher.quoteReplacement(if (toLog) "[${values[i]}]" else "?"))
                         sqlValues.add(values[i])
                     }
                 } else {
@@ -253,13 +239,10 @@ class SqlExecutorKt {
                     missingKeys.add(key)
                 }
             }
-            require(!(!toLog && !missingKeys.isEmpty())) { "Missing value of the keys: $missingKeys" }
+            require(toLog || missingKeys.isEmpty()) {
+                "Missing value of the keys: [${missingKeys.joinToString (", ")}]" }
             matcher.appendTail(result)
             return result.toString()
-        }
-
-        fun sqlTemplate(): String {
-            return sqlTemplate
         }
 
         override fun toString(): String {

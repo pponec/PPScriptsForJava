@@ -31,7 +31,7 @@ import net.ponec.script.SqlExecutor.SqlParamBuilder;
  * Testing the SqlParamBuilder class
  * @author Pavel Ponec
  */
-public class SqlParamBuilderDemoTest extends AbstractJdbcConnector {
+public class SqlParamBuilderDemo extends AbstractJdbcConnector {
 
     /** Some testing date */
     private final LocalDate someDate = LocalDate.parse("2018-09-12");
@@ -47,7 +47,7 @@ public class SqlParamBuilderDemoTest extends AbstractJdbcConnector {
     }
 
     /** Example of SqlParamBuilder */
-    public void runSqlStatements(Connection dbConnection) throws SQLException {
+    public void runSqlStatements(Connection dbConnection) {
         try (var builder = new SqlParamBuilder(dbConnection)) {
             builder.sql("""
                             SELECT t.id, t.name, t.created

@@ -21,7 +21,7 @@ import java.util.stream.StreamSupport;
 /** Use SQL statements by the SqlParamBuilder class. */
 public final class SqlExecutor {
     private final static ConnectionProvider db = ConnectionProvider.forH2("user", "pwd");
-    private final LocalDate someDate = LocalDate.parse("2018-09-12");
+    private final static LocalDate someDate = LocalDate.parse("2020-09-24");
 
     public static void main(final String[] args) throws Exception {
         System.out.println("Arguments: " + List.of(args));
@@ -86,7 +86,7 @@ public final class SqlExecutor {
                             rs.getObject("created", LocalDate.class)))
                     .toList();
             System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine());
-            employees.stream().forEach(System.out::println);
+            employees.stream().forEach((Employee employee) -> System.out.println(employee));
 
             assertEquals(3, employees.size());
             assertEquals(1, employees.get(0).id);
@@ -135,19 +135,19 @@ public final class SqlExecutor {
      * @author Pavel Ponec, https://github.com/pponec
      * @version 1.0.7
      */
-    static class SqlParamBuilder implements Closeable {
+    static class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
         private final Map<String, Object[]> params = new HashMap<>();
-        private String sqlTemplate = null;
+        private String sqlTemplate = "";
         private PreparedStatement preparedStatement = null;
 
         public SqlParamBuilder(Connection dbConnection) {
             this.dbConnection = dbConnection;
         }
 
-        /** Close statement (if any) and set a new SQL template */
+        /** Close statement (if any) and set the new SQL template */
         public SqlParamBuilder sql(String... sqlLines) {
             close();
             sqlTemplate = sqlLines.length == 1 ? sqlLines[0] : String.join("\n", sqlLines);
@@ -195,7 +195,7 @@ public final class SqlExecutor {
         }
 
         /** Iterate executed select */
-        public void forEach(SqlConsumer<ResultSet> consumer) throws IllegalStateException, SQLException  {
+        public void forEach(SqlConsumer<ResultSet> consumer) throws IllegalStateException  {
             stream().forEach(consumer);
         }
 

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.ponec.script.SqlExecutor.SqlParamBuilder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,12 +38,13 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
     @Test
     public void testShowUsage() throws Exception {
         try (Connection dbConnection = createDbConnection())  {
-            runSqlStatements(dbConnection);
+            runSqlStatementTest(dbConnection);
+            toStringTest(dbConnection);
         }
     }
 
     /** Example of SQL statement INSERT. */
-    public void runSqlStatements(Connection dbConnection) throws SQLException {
+    public void runSqlStatementTest(Connection dbConnection) throws SQLException {
 
         try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
             System.out.println("CREATE TABLE");
@@ -73,6 +75,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                     .bind("code", "T")
                     .bind("created", someDate.plusDays(1))
                     .execute();
+
             System.out.println("Previous statement with modified parameters");
             builder.bind("id1", 11)
                     .bind("id2", 12)
@@ -92,6 +95,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
                     .toList();
+
             assertEquals(3, employees.size());
             Assertions.assertEquals(1, employees.get(0).id);
             Assertions.assertEquals("test", employees.get(0).name);
@@ -105,13 +109,23 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                             rs.getString(2),
                             rs.getObject(3, LocalDate.class)))
                     .toList();
+
             assertEquals(5, employees2.size());
+
+            var counter = new AtomicInteger();
+            builder.forEach(rs -> {
+                counter.incrementAndGet();
+            });
+            assertEquals(5, counter.get());
+            assertEquals("SELECT t.id, t.name, t.created" +
+                            " FROM employee t" +
+                            " WHERE t.id < [100] AND t.code IN ([T],[V])" +
+                            " ORDER BY t.id",
+                    builder.toStringLine());
         }
     }
 
-    @Test
-    public void loggingSql() {
-        final Connection dbConnection = null;
+    public void toStringTest(Connection dbConnection) {
         try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
 
             System.out.println("MISSING PARAMS");

@@ -54,7 +54,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.0.5";
+    private final String appVersion = "1.0.6";
 
     private final Class<?> mainClass = getClass();
 
@@ -211,28 +211,29 @@ public final class PPUtils {
         }
 
         public void findFiles(Path dir, boolean printLine) throws IOException {
-            Files.list(dir)
-                    .filter(Files::isReadable)
-                    .sorted(pathComparator)
-                    .forEach(file -> {
-                if (Files.isDirectory(file)) {
-                    try {
-                        findFiles(file, printLine);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
-                        && (bodyPattern == null || grep(file, printLine))) {
-                    printFileName(file).println();
-                }
-            });
+            try (var fileStream = Files.list(dir)) {
+                fileStream.filter(Files::isReadable)
+                        .sorted(pathComparator)
+                        .forEach(file -> {
+                            if (Files.isDirectory(file)) {
+                                try {
+                                    findFiles(file, printLine);
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
+                                    && (bodyPattern == null || grep(file, printLine))) {
+                                printFileName(file).println();
+                            }
+                        });
+            }
         }
 
         public boolean grep(Path file, boolean printLine) {
-            try {
-                final var validLineStream = Files
-                        .lines(file, StandardCharsets.UTF_8)
-                        .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find());
+            try (final var validLineStream = Files
+                    .lines(file, StandardCharsets.UTF_8)
+                    .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find())
+            ) {
                 if (printLine) {
                     validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
                     return false;
@@ -278,7 +279,7 @@ public final class PPUtils {
         /** Compile the script and build it to the executable JAR file */
         private void compile() throws Exception {
             if (isJar()) {
-                out.printf("Use the statement rather: java %s.java c %s", appName);
+                out.printf("Use the statement rather: java %s.java c", appName);
                 System.exit(1);
             }
 
