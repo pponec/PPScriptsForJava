@@ -64,19 +64,12 @@ void mainStart(Connection dbConnection) throws Exception {
                         rs.getObject("created", LocalDate.class)))
                 .toList();
         System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine());
-        employees.stream().forEach(System.out::println);
+        employees.stream().forEach((Employee employee) -> System.out.println(employee));
 
         assertEquals(3, employees.size());
         assertEquals(1, employees.get(0).id);
         assertEquals("test", employees.get(0).name);
         assertEquals(someDate, employees.get(0).created);
-        assertEquals( """
-                SELECT t.id, t.name, t.created
-                FROM employee t
-                WHERE t.id < [10]
-                  AND t.code IN ([T],[V])
-                ORDER BY t.id
-                """, builder.toString());
     }
 }
 

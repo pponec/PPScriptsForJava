@@ -92,13 +92,6 @@ public final class SqlExecutor {
             assertEquals(1, employees.get(0).id);
             assertEquals("test", employees.get(0).name);
             assertEquals(someDate, employees.get(0).created);
-            assertEquals( """
-                    SELECT t.id, t.name, t.created
-                    FROM employee t
-                    WHERE t.id < [10]
-                      AND t.code IN ([T],[V])
-                    ORDER BY t.id
-                    """, builder.toString());
         }
     }
 

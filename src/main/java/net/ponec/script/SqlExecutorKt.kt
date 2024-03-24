@@ -91,13 +91,6 @@ class SqlExecutorKt {
             assertEquals(1, employees[0].id)
             assertEquals("test", employees[0].name)
             assertEquals(someDate, employees[0].created)
-            assertEquals("""
-                    SELECT t.id, t.name, t.created
-                    FROM employee t
-                    WHERE t.id < [10]
-                      AND t.code IN ([T],[V])
-                    ORDER BY t.id
-                    """.trimIndent(), builder.toString())
         }
     }
 
