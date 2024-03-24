@@ -1,277 +1,273 @@
 /*
  * Common utilities for Java17+ for the CLI (command line interface).
- * Usage: SqlExecutorKt.sh
- *
+ * Usage: see SqlExecutorKt.sh
  * Environment: Java 17+ with JDBC driver com.h2database:h2:2.2.224 are required.
  * Licence: Apache License, Version 2.0, Pavel Ponec, https://github.com/pponec/DirectoryBookmarks
  */
-package net.ponec.script
+package net.ponec.scriptKt
 
 import java.io.Closeable
-import java.io.IOException
 import java.sql.*
 import java.time.LocalDate
 import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+import java.util.stream.Stream
+import java.util.stream.StreamSupport
 
 //KTS// SqlExecutorKt.main(args) // For the Kotlin script, don't remove it.
 
 /** Use SQL statements by the SqlParamBuilder class.  */
 class SqlExecutorKt {
+    private val someDate = LocalDate.parse("2018-09-12")
 
     companion object Static {
-        private val db = ConnectionProvider2.forH2("user", "pwd")
+        private val db = ConnectionProvider.forH2("user", "pwd")
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            db.connection().use { SqlExecutorKt().mainStart(it, *args) }
+            println("args: [${args.joinToString()}]")
+            db.connection().use { SqlExecutorKt().mainStart(it) }
         }
     }
 
     @Throws(Exception::class)
-    fun mainStart(connection: Connection, vararg args: String) {
-        // Create DB table
-        val createTable = """
-                CREATE TABLE employee
-                ( id INTEGER PRIMARY KEY
-                , name VARCHAR(256) DEFAULT 'test'
-                , code VARCHAR(1)
-                , created DATE NOT NULL
-                )
-                """.trimIndent()
-        SqlParamBuilderK(createTable, connection).use { it.execute() }
+    fun mainStart(dbConnection: Connection) {
+        SqlParamBuilder(dbConnection).use { builder ->
 
-        // DB insert
-        val insertSql = """
-                INSERT INTO employee
-                ( id, code, created) VALUES
-                ( :id1, :code, :created),
-                ( :id2, :code, :created)
-                """.trimIndent()
+            println("# CREATE TABLE")
+            builder.sql("""
+                            CREATE TABLE employee
+                            ( id INTEGER PRIMARY KEY
+                            , name VARCHAR(256) DEFAULT 'test'
+                            , code VARCHAR(1)
+                            , created DATE NOT NULL )
+                            """.trimIndent()
+            ).execute()
 
-        val insertArgs = mapOf(
-            "id1" to 1,
-            "id2" to 2,
-            "code" to "T",
-            "created" to LocalDate.parse("2024-04-14")
-        )
-        SqlParamBuilderK(insertSql, insertArgs, connection).use { sql ->
-            sql.execute()
-            // Insert next two rows:
-            sql.setParam("id1", 11).setParam("id2", 12).setParam("code", "V")
-            sql.execute()
-        }
+            println("# SINGLE INSERT")
+            builder.sql("""
+                            INSERT INTO employee
+                            ( id, code, created ) VALUES
+                            ( :id, :code, :created )
+                            """.trimIndent())
+                .bind("id", 1)
+                .bind("code", "T")
+                .bind("created", someDate)
+                .execute()
 
-        // Select
-        val selectSql = """
-                SELECT t.id, t.code, t.created
-                FROM employee t
-                WHERE t.id < :id
-                  AND t.code IN (:code)
-                ORDER BY t.id
-                """.trimIndent()
-        val selectArgs = mapOf("id" to 10, "code" to mutableListOf("T", "V"))
-        SqlParamBuilderK(selectSql, selectArgs, connection).use { sql ->
-            for (rs in sql.executeSelect()) {
-                println("id:${rs.getInt(1)}" +
-                        ", code:${rs.getString(2)}" +
-                        ", created=${rs.getObject(3)}")
-            }
-            // New SELECT with modified SQL arguments:
-            sql.setParam("id", 100)
-            for (rs in sql.executeSelect()) {
-                println("id: ${rs.getInt(1)}" +
-                        ", code:${rs.getString(2)}" +
-                        ", created=${rs.getObject(3)}")
-            }
-        }
-    }
-}
+            println("# MULTI INSERT")
+            builder.sql("""
+                            INSERT INTO employee
+                            (id,code,created) VALUES
+                            (:id1,:code,:created),
+                            (:id2,:code,:created)
+                            """.trimIndent())
+                .bind("id1", 2)
+                .bind("id2", 3)
+                .bind("code", "T")
+                .bind("created", someDate.plusDays(7))
+                .execute()
+            builder.bind("id1", 11)
+                .bind("id2", 12)
+                .bind("code", "V")
+                .execute()
 
-/** A utility class from the Ujorm framework  */
-internal class SqlParamBuilderK(
-    sqlTemplate: CharSequence,
-    params: Map<String, *>,
-    dbConnection: Connection
-) : Closeable {
-    private val sqlTemplate: String
-    private val params: MutableMap<String, Any>
-    val dbConnection: Connection
-    private var preparedStatement: PreparedStatement? = null
-    private var rsWrapper: ResultSetWrapper? = null
-
-    init {
-        this.sqlTemplate = sqlTemplate.toString()
-        this.params = HashMap(params)
-        this.dbConnection = dbConnection
-    }
-
-    constructor(sqlTemplate: CharSequence, dbConnection: Connection) : this(
-        sqlTemplate,
-        HashMap<String, Any>(),
-        dbConnection
-    )
-
-    @Throws(IllegalStateException::class, SQLException::class)
-    fun executeSelect(): Iterable<ResultSet> {
-        try {
-            rsWrapper.use { it } // Close the current ResultSet
-        } catch (e: IOException) {
-            throw IllegalStateException("Closing fails", e)
-        }
-        rsWrapper = ResultSetWrapper(prepareStatement().executeQuery())
-        return rsWrapper as Iterable<ResultSet>
-    }
-
-    @Throws(IllegalStateException::class, SQLException::class)
-    fun execute(): Int {
-        return prepareStatement().executeUpdate()
-    }
-
-    /** The method closes a PreparedStatement object with related objects, not the database connection.  */
-    override fun close() {
-        try {
-            rsWrapper.use { c1 -> preparedStatement.use { it } }
-        } catch (e: Exception) {
-            throw IllegalStateException("Closing fails", e)
-        } finally {
-            rsWrapper = null
-            preparedStatement = null
-        }
-    }
-
-    @Throws(SQLException::class)
-    fun prepareStatement(): PreparedStatement {
-        val sqlValues: MutableList<Any> = ArrayList()
-        val sql = buildSql(sqlValues, false)
-        val result = preparedStatement ?: dbConnection.prepareStatement(sql) ?: throw IllegalStateException()
-        preparedStatement = result
-
-        var i = 0
-        val max = sqlValues.size
-        while (i < max) {
-            result.setObject(i + 1, sqlValues[i])
-            i++
-        }
-        return result
-    }
-
-    protected fun buildSql(sqlValues: MutableList<Any>, toLog: Boolean): String {
-        val result = StringBuilder(256)
-        val matcher = SQL_MARK.matcher(sqlTemplate)
-        val missingKeys: MutableSet<String> = HashSet()
-        val singleValue = arrayOfNulls<Any>(1)
-        while (matcher.find()) {
-            val key = matcher.group(1)
-            val value = params[key]
-            if (value != null) {
-                matcher.appendReplacement(result, "")
-                singleValue[0] = value
-                val values = if (value is List<*>) value.toTypedArray() else singleValue
-                for (i in values.indices) {
-                    if (i > 0) result.append(',')
-                    result.append(Matcher.quoteReplacement(if (toLog) "[" + values[i] + "]" else "?"))
-                    sqlValues.add(values[i] ?: "")
+            println("# SELECT")
+            val employees = builder.sql("""
+                            SELECT t.id, t.name, t.created
+                            FROM employee t
+                            WHERE t.id < :id
+                              AND t.code IN (:code)
+                            ORDER BY t.id
+                            """.trimIndent()
+            )
+                .bind("id", 10)
+                .bind("code", "T", "V")
+                .streamMap { Employee(
+                        it.getInt("id"),
+                        it.getString("name"),
+                        it.getObject("created", LocalDate::class.java)
+                    )
                 }
-            } else {
-                matcher.appendReplacement(result, Matcher.quoteReplacement(":$key"))
-                missingKeys.add(key)
+                .toList()
+            System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine())
+            employees.stream().forEach { x: Employee? -> println(x) }
+            assertEquals(3, employees.size)
+            assertEquals(1, employees[0].id)
+            assertEquals("test", employees[0].name)
+            assertEquals(someDate, employees[0].created)
+            assertEquals("""
+                    SELECT t.id, t.name, t.created
+                    FROM employee t
+                    WHERE t.id < [10]
+                      AND t.code IN ([T],[V])
+                    ORDER BY t.id
+                    """.trimIndent(), builder.toString()
+            )
+        }
+    }
+
+    data class Employee(val id: Int, val name: String, val created: LocalDate)
+
+    internal data class ConnectionProvider(
+        val jdbcClass: String,
+        val jdbcUrl: String,
+        val user: String,
+        val passwd: String
+    ) {
+        fun connection(): Connection {
+            return try {
+                Class.forName(jdbcClass)
+                DriverManager.getConnection(jdbcUrl, user, passwd)
+            } catch (ex: ClassNotFoundException) {
+                throw SQLException("Driver class not found: $jdbcClass", ex)
             }
         }
-        require(!(!toLog && !missingKeys.isEmpty())) { "Missing value of the keys: $missingKeys" }
-        matcher.appendTail(result)
-        return result.toString()
-    }
 
-    /** Set a SQL parameter  */
-    fun setParam(key: String, value: Any): SqlParamBuilderK {
-        params[key] = value
-        return this
-    }
-
-    override fun toString(): String {
-        return buildSql(ArrayList(), true)
-    }
-
-    /** Based on the `RowIterator` class of Ujorm framework.  */
-    internal class ResultSetWrapper(private val resultSet: ResultSet) : Iterable<ResultSet>,
-        Iterator<ResultSet>, Closeable {
-        /** It the cursor ready for reading? After a row reading the value will be set to false  */
-        private var cursorReady = false
-
-        /** Has a resultset a next row?  */
-        private var hasNext = false
-        override fun iterator(): Iterator<ResultSet> {
-            return this
-        }
-
-        override fun spliterator(): Spliterator<ResultSet> {
-            throw UnsupportedOperationException("Unsupported")
-        }
-
-        /** The last checking closes all resources.  */
-        @Throws(IllegalStateException::class)
-        override fun hasNext(): Boolean {
-            if (!cursorReady) try {
-                hasNext = resultSet.next()
-                if (!hasNext) {
-                    close()
-                }
-                cursorReady = true
-            } catch (e: SQLException) {
-                throw IllegalStateException(e)
-            }
-            return hasNext
-        }
-
-        override fun next(): ResultSet {
-            if (hasNext()) {
-                cursorReady = false
-                return resultSet
-            }
-            throw NoSuchElementException()
-        }
-
-        override fun close() {
-            try {
-                resultSet.use { rs ->
-                    cursorReady = true
-                    hasNext = false
-                }
-            } catch (e: SQLException) {
-                throw IllegalStateException(e)
-            }
-        }
-    }
-
-    companion object {
-        /** SQL parameter mark type of `:param`  */
-        private val SQL_MARK = Pattern.compile(":(\\w+)(?=[\\s,;\\])]|$)")
-    }
-}
-
-internal data class ConnectionProvider2(
-    val jdbcClass: String,
-    val jdbcUrl: String,
-    val user: String,
-    val passwd: String
-) {
-    @Throws(SQLException::class)
-    fun connection(): Connection {
-        return try {
-            Class.forName(jdbcClass)
-            DriverManager.getConnection(jdbcUrl, user, passwd)
-        } catch (ex: ClassNotFoundException) {
-            throw SQLException("Driver class not found: $jdbcClass", ex)
-        }
-    }
-
-    companion object {
-        fun forH2(user: String, passwd: String) = ConnectionProvider2(
+        companion object {
+            fun forH2(user: String, passwd: String) = ConnectionProvider(
                 "org.h2.Driver",
                 "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
                 user, passwd
             )
+        }
+    }
+
+    private fun <T> assertEquals(expected: T, result: T) {
+        check(expected == result) { "Objects are not equals: '${expected}' <> '${result}'" }
+    }
+
+    /**
+     * Less than 140 lines long class to simplify work with JDBC.
+     * Original source: [GitHub](https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.java)
+     * Licence: Apache License, Version 2.0
+     * @author Pavel Ponec, https://github.com/pponec
+     * @version 1.0.7
+     */
+    internal class SqlParamBuilder(private val connection: Connection
+    ) : Closeable {
+        private val params: MutableMap<String, Array<out Any?>> = HashMap()
+        private val sqlParameterMark = Pattern.compile(":(\\w+)")
+        private var sqlTemplate: String = ""
+        private var preparedStatement: PreparedStatement? = null
+
+        /** Close statement (if any) and set a new SQL template  */
+        fun sql(vararg sqlLines: String): SqlParamBuilder {
+            close()
+            sqlTemplate = if (sqlLines.size == 1) sqlLines[0] else sqlLines.joinToString("\n")
+            return this
+        }
+
+        /** Assign a SQL value(s). In case a reused statement set the same number of parameters items.  */
+        fun bind(key: String, vararg values: Any?): SqlParamBuilder {
+            params[key] = if (values.isNotEmpty()) values else arrayOfNulls(1)
+            return this
+        }
+
+        @Throws(IllegalStateException::class, SQLException::class)
+        fun execute(): Int {
+            return prepareStatement().executeUpdate()
+        }
+
+        /** A ResultSet object is automatically closed when the Statement object that generated it is closed,
+         * re-executed, or used to retrieve the next result from a sequence of multiple results.  */
+        @Throws(IllegalStateException::class)
+        private fun executeSelect(): ResultSet {
+            return try {
+                prepareStatement().executeQuery()
+            } catch (ex: Exception) {
+                throw ex as? RuntimeException ?: IllegalStateException(ex)
+            }
+        }
+
+        /** Use the  [.streamMap] or [.forEach] methods rather  */
+        private fun stream(): Stream<ResultSet> {
+            val resultSet = executeSelect()
+            val iterator = object : Iterator<ResultSet> {
+                override fun hasNext(): Boolean {
+                    return try {
+                        resultSet.next()
+                    } catch (e: SQLException) {
+                        throw IllegalStateException(e)
+                    }
+                }
+
+                override fun next(): ResultSet {
+                    return resultSet
+                }
+            }
+            return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false)
+        }
+
+        /** Iterate executed select  */
+        @Throws(IllegalStateException::class, SQLException::class)
+        fun forEach(consumer: (ResultSet) -> Unit) {
+            stream().forEach(consumer)
+        }
+
+        fun <R> streamMap(mapper: (ResultSet) -> R): Stream<R> {
+            return stream().map(mapper)
+        }
+
+        /** The method closes a PreparedStatement object with related objects, not the database connection.  */
+        override fun close() {
+            try {
+                preparedStatement.use {} // AutoCloseable
+            } catch (e: Exception) {
+                throw IllegalStateException("Closing fails", e)
+            } finally {
+                preparedStatement = null
+                params.clear()
+            }
+        }
+
+        @Throws(SQLException::class)
+        fun prepareStatement(): PreparedStatement {
+            val sqlValues = mutableListOf<Any?>()
+            val sql = buildSql(sqlValues, false)
+            val result = preparedStatement ?: connection.prepareStatement(sql) ?: throw IllegalStateException()
+            for (i in 0 until sqlValues.size) {
+                result.setObject(i + 1, sqlValues[i])
+            }
+            preparedStatement = result
+            return result
+        }
+
+        private fun buildSql(sqlValues: MutableList<Any?>, toLog: Boolean): String {
+            val result = StringBuilder(256)
+            val matcher = sqlParameterMark.matcher(sqlTemplate)
+            val missingKeys = HashSet<Any>()
+            while (matcher.find()) {
+                val key = matcher.group(1)
+                val values = params[key]
+                if (values != null) {
+                    matcher.appendReplacement(result, "")
+                    for (i in values.indices) {
+                        if (i > 0) result.append(',')
+                        result.append(Matcher.quoteReplacement(if (toLog) "[" + values[i] + "]" else "?"))
+                        sqlValues.add(values[i])
+                    }
+                } else {
+                    matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group()))
+                    missingKeys.add(key)
+                }
+            }
+            require(!(!toLog && !missingKeys.isEmpty())) { "Missing value of the keys: $missingKeys" }
+            matcher.appendTail(result)
+            return result.toString()
+        }
+
+        fun sqlTemplate(): String {
+            return sqlTemplate
+        }
+
+        override fun toString(): String {
+            return buildSql(ArrayList(), true)
+        }
+
+        fun toStringLine(): String {
+            return toString().replace("\\s*\\R+\\s*".toRegex(), " ")
+        }
     }
 }
