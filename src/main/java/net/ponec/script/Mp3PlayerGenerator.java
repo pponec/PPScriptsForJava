@@ -5,10 +5,11 @@
 
 package net.ponec.script;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.Normalizer;
 import java.util.*;
@@ -21,7 +22,6 @@ public class Mp3PlayerGenerator {
     private final String appName = getClass().getName();
     private final String appVersion = "1.3.3";
     private final String outputFile = "index.html";
-    private final Locale locale = Locale.getDefault();
     private final Charset charset = StandardCharsets.UTF_8;
 
     public static void main(String[] args) throws Exception {
@@ -40,7 +40,7 @@ public class Mp3PlayerGenerator {
         System.exit(1);
     }
 
-    CharSequence buildHtmlPlayer(List<String> mp3List) {
+    CharSequence buildHtmlPlayer(List<Path> mp3List) {
         var songFiles = mp3List.stream()
                 .map(s -> "\"" + s + "\"")
                 .collect(Collectors.joining("\n\t, "));
@@ -55,27 +55,13 @@ public class Mp3PlayerGenerator {
     }
 
     /** Return all 'mp3' and 'ogg' files. */
-    List<String> getSoundFilesSorted() {
-        var files = new File(".").listFiles();
-        if (files == null) {
-            return Collections.emptyList();
-        }
+    List<Path> getSoundFilesSorted() throws IOException {
         var filePattern = Pattern.compile("\\.(?i)(mp3|ogg)$");
-        return Arrays.stream(files)
-                .filter(file -> file.isFile())
-                .map   (file -> file.getName())
-                .filter(file -> filePattern.matcher(file).find())
-                .sorted(Comparator.comparing(this::removeDiacritics))
-                .toList();
-    }
-
-    /** Remove diacritics and some common separator characters. */
-    String removeDiacritics(final String input) {
-        var result = Normalizer.normalize(input, Normalizer.Form.NFD);
-        result = result.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
-        result = result.replaceAll("[\\-\\+\\.\\|:;,_/ ]+", " ");
-        result = result.toLowerCase(Locale.ENGLISH);
-        return result;
+        var files = new FinderUtilitiy(filePattern, new PathComparator())
+                .findFiles(Path.of(""))
+                .getFileCollector();
+        Collections.sort(files, new PathComparator());
+        return files;
     }
 
     String htmlTemplate() {
@@ -121,7 +107,7 @@ public class Mp3PlayerGenerator {
 	<audio id="audioPlayer" controls></audio>
 	<p id="currentSong"></p>
 	<script>
-        var playlist = [ ${songFiles} ];               
+        var playlist = [ ${songFiles} ];
         var audioPlayer = document.getElementById('audioPlayer');
         var playlistElement = document.getElementById('playlist');
         var currentSongIndex = 0;
@@ -210,6 +196,66 @@ public class Mp3PlayerGenerator {
             return Paths.get("").toAbsolutePath().getFileName().toString();
         } catch (RuntimeException e) {
             return "MP3 player";
+        }
+    }
+
+    static final class FinderUtilitiy {
+        private final Pattern filePattern;
+        private final Comparator<Path> pathComparator;
+        private final List<Path> fileCollector = new ArrayList<>();
+
+        public FinderUtilitiy(Pattern filePattern, Comparator<Path> comparator) {
+            this.filePattern = filePattern;
+            this.pathComparator = comparator;
+        }
+
+        public List<Path> getFileCollector() {
+            return fileCollector;
+        }
+
+        public FinderUtilitiy findFiles(Path dir) throws IOException {
+            try (var fileStream = Files.list(dir)) {
+                fileStream.filter(Files::isReadable)
+                        .sorted(pathComparator)
+                        .forEach(file -> {
+                            if (Files.isDirectory(file)) {
+                                try {
+                                    findFiles(file);
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            } else if (filePattern.matcher(file.toString()).find()) {
+                                fileCollector.add(file);
+                            }
+                        });
+            }
+            return this;
+        }
+    }
+
+
+    /** Compare files by a name, the directory last */
+    static class PathComparator implements Comparator<Path> {
+        @Override
+        public int compare(final Path p1, final Path p2) {
+            final var d1 = Files.isDirectory(p1);
+            final var d2 = Files.isDirectory(p2);
+            if (d1 != d2) {
+                return d1 ? 1 : -1;
+            } else {
+                return removeDiacritics(p1).compareTo(
+                       removeDiacritics(p2));
+            }
+        }
+
+        /** Remove diacritics and some common separator characters. */
+        String removeDiacritics(final Path file) {
+            var input = file.toString();
+            var result = Normalizer.normalize(input, Normalizer.Form.NFD);
+            result = result.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+            result = result.replaceAll("[\\-\\+\\.\\|:;,_/ ]+", " ");
+            result = result.toLowerCase(Locale.ENGLISH);
+            return result;
         }
     }
 }
