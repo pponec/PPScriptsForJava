@@ -54,7 +54,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.0.6";
+    private final String appVersion = "1.0.7";
 
     private final Class<?> mainClass = getClass();
 
@@ -90,13 +90,13 @@ public final class PPUtils {
                 final var subArgs = args.subArray(2 + (printLine ? 1 : 0 ));
                 final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.get(-1).map(Pattern::compile).orElse(null);
-                new FinderUtilitiy(bodyPattern, filePattern, enforcedLinux, out)
+                new FinderUtilitiy(pathComparator(), bodyPattern, filePattern, enforcedLinux, out)
                         .findFiles(file, printLine && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 3) {
                     final var bodyPattern = args.get(2).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(bodyPattern, null, enforcedLinux, out);
+                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, null, enforcedLinux, out);
                     args.stream().skip(3).forEach(file -> pathFinder.grep(Path.of(file), true));
                 }
             }
@@ -145,6 +145,12 @@ public final class PPUtils {
                 System.exit(1);
             }
         }
+    }
+
+    private Comparator<Path> pathComparator() {
+        return sortDirectoryLast
+                ? new DirLastComparator()
+                : Comparator.<Path>naturalOrder();
     }
 
     private String currentDate(String format) {
@@ -199,11 +205,10 @@ public final class PPUtils {
         private final Pattern filePattern;
         private final boolean enforcedLinux;
         private final PrintStream out;
-        private final Comparator<Path> pathComparator = sortDirectoryLast
-                ? new DirLastComparator()
-                : Comparator.naturalOrder();
+        private final Comparator<Path> pathComparator;
 
-        public FinderUtilitiy(Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
+        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
+            this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
             this.filePattern = filePattern;
             this.enforcedLinux = enforcedLinux;
