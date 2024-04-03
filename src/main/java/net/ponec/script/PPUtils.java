@@ -496,7 +496,8 @@ public final class PPUtils {
         }
     }
 
-    /** JSON parser. The {@code array} type is not supported. */
+    /** JSON parser. The {@code array} type is not supported. <br>
+     *  Java-style comments are tolerated as long as they do not contain quotes. */
     public static class Json {
         static final Pattern keyPattern = Pattern.compile("\"(.*?)\"\\s*:\\s*(\".*?\"|\\d+\\.?\\d*|true|false|null|\\{.*?\\})");
         final Map<String, Object> map;
