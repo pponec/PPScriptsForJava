@@ -1,7 +1,8 @@
 # 170 lines of Java code to run SQL statements
 
-I would like to introduce a Java class with less than 170 lines of code to make it easier to work with SQL queries called via the JDBC API.
-What makes it special? The class can be embedded in a Java version 17 script.
+I'd like to introduce you to a Java class with less than 170 lines of code to make it easier to work with SQL queries called through the JDBC API. 
+What makes it special? 
+The class can be embedded in a Java version 17 script.
 
 The advantage of these scripts is that they are easily portable in text format and can be run without prior compilation, while having a fairly extensive Java standard library at our disposal.
 The scripts can be used in various prototypes, in which it is possible (after connecting to the database) to solve more complicated data exports or data conversions.
@@ -12,11 +13,11 @@ We can include all the libraries we need when we run the script, but they will p
 The complications associated with distributing such a script probably need not be stressed.
 For these reasons, I believe that external libraries in scripts are best avoided.
 If we still want to go the script route, the choice falls on pure JDBC.
-For writing SQL queries, multi-line text literals can be preferably used, and the automatic closing of objects of the Statement type (implementing the AutoCloseable interface) also contributes to easier writing.
+For writing SQL queries, multi-line text literals can be preferably used, and the automatic closing of objects of the [PreparedStatement](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html) type (implementing the [AutoCloseable](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/AutoCloseable.html) interface) also contributes to easier writing.
 So what is the problem?
 
 It is a good practice to map SQL parameter values to question marks.
-I consider the main handicap of JDBC to be the mapping of parameters to a sequential question mark number (starting with a one).
+I consider the main handicap of JDBC to be the **mapping of parameters** to a sequential question mark number (starting with a one).
 The first version of mapping parameters to an SQL script often turns out well, but the risk of error increases as the number of parameters and additional SQL modifications increase.
 As a reminder, inserting a new parameter in the first position requires renumbering the next row.
 Another complication is the use of the IN operator, because for each enumeration value, a question mark must be written in the SQL template and mapped to a separate parameter.
