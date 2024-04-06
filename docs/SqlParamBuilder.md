@@ -124,3 +124,4 @@ One of the reasons to use Maven is the ease of running jUnit tests.
 The fastest way to create your own implementation is probably to download a sample script, rework the mainRun() method, and modify the connection parameters to your own database.
 When running, be sure to connect the necessary JDBC driver.
 A link to a sample use of the `SqlParamBuilder` class [is here](https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.java).
+The class can be run using the Bash script [SqlExecutor.sh](https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.sh).
