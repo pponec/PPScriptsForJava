@@ -66,8 +66,8 @@ public final class PPUtils {
 
     private static final boolean sortDirectoryLast = true;
 
-    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/utils/%s.java"
-            .formatted(!true ? "main" : "development", appName);
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/development/src/%s/java/net/ponec/script/%s.java"
+            .formatted(true ? "main" : "development", appName);
 
     public PPUtils(PrintStream out) {
         this.out = out;

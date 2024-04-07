@@ -34,8 +34,8 @@ public final class DirectoryBookmarks {
     /** Shortcut for a home directory. Empty text is ignored. */
     private final String homeDirMark = "~";
     private final Class<?> mainClass = getClass();
-    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/DirectoryBookmarks/%s/src/main/java/net/ponec/script/%s.java"
-            .formatted(!true ? "main" : "development", appName);
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/development/src/%s/java/net/ponec/script/%s.java"
+            .formatted(true ? "main" : "development", appName);
     private final File storeName;
     private final PrintStream out;
     private final PrintStream err;

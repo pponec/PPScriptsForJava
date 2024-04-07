@@ -7,7 +7,6 @@
  */
 package net.ponec.script;
 
-import java.io.Closeable;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -123,7 +122,7 @@ public final class SqlExecutor {
 
     /**
      * Less than 170 lines long class to simplify work with JDBC.
-     * Original source: <a href="https://github.com/pponec/DirectoryBookmarks/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
+     * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
      * @version 1.0.7
