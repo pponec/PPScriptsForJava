@@ -4,10 +4,10 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>net.ponec</groupId>
-	<artifactId>script</artifactId>
+	<artifactId>java-util-scripts</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>script</name>
-	<description>Scripts for Java</description>
+	<description>Common scripts for Java 17</description>
 
 	<properties>
 		<java.version>17</java.version>
