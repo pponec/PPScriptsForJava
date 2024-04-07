@@ -3,9 +3,10 @@
 # Java version 17+ is required.
 
 set -e
-getJavaExe() {
-  if [ -n "$JAVA_HOME" ]; then echo "$JAVA_HOME/bin/java"
-  else echo "$(which java)"
+javaExe() {
+  if [ -n "$JAVA_HOME" ]
+  then "$JAVA_HOME/bin/java" "$@"
+  else java "$@"
   fi
 }
 

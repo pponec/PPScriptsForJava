@@ -1,6 +1,6 @@
 # Shortcuts for DirectoryBookmarks v1.8.5 utilities - for the PowerShell:
 function directoryBookmarks { & "java" --limit-modules java.base,java.net.http,jdk.compiler,jdk.crypto.ec -jar "$HOME/bin/DirectoryBookmarks.jar" $args }
-function cdf { Set-Location -Path $(directoryBookmarks -l $args) }
+function cdf { Set-Location -Path $(directoryBookmarks g $args) }
 function sdf { directoryBookmarks s . @args }
 function ldf { directoryBookmarks l $args }
 

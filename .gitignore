@@ -1,4 +1,9 @@
 # Compiled class file
+/target/**
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
 *.class
 
 # Log file
@@ -17,6 +22,7 @@
 *.ear
 *.zip
 *.tar.gz
+*.tgz
 *.rar
 *.iml
 

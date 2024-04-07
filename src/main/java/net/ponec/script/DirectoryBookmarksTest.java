@@ -1,6 +1,8 @@
 // The test must be compiled to the run.
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
 
+package net.ponec.script;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -21,13 +23,13 @@ public class DirectoryBookmarksTest {
 
         var outputStream = new ByteArrayOutputStream();
         try (var printStream = new PrintStream(outputStream, true, charset)) {
-            var instance = new DirectoryBookmarks(file, printStream, System.err, false);
+            var instance = new DirectoryBookmarks(file, printStream, System.err, false, false);
             sdfTest(instance, outputStream);
         }
 
         outputStream = new ByteArrayOutputStream();
         try (var printStream = new PrintStream(outputStream, true, charset)) {
-            var instance = new DirectoryBookmarks(file, printStream, System.err, false);
+            var instance = new DirectoryBookmarks(file, printStream, System.err, false, false);
             ldfTest(instance, outputStream);
         }
     }
