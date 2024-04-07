@@ -149,7 +149,7 @@ class SqlParamBuilderKtTest : AbstractJdbcConnector() {
                     WHERE t.id > [10]
                       AND t.code = [w]
                     ORDER BY t.id
-                    """.trimIndent().stripIndent()
+                    """.trimIndent()
             Assertions.assertEquals(expected, builder.toString())
         }
     }
