@@ -58,7 +58,7 @@ I have already found similar tools on the Internet, but they either did not meet
 ## How to integrate the application
 
 1. Install Java17+.
-2. Download the file [DirectoryBookmarks.java](../main/java/net/ponec/script/DirectoryBookmarks.java) to a local directory 
+2. Download the file [DirectoryBookmarks.java](../src/main/java/net/ponec/script/DirectoryBookmarks.java) to a local directory 
 3. Open a character terminal and run commands depending on the operating system.
 
 ### For the Ubuntu:
@@ -67,7 +67,7 @@ I have already found similar tools on the Internet, but they either did not meet
 2. `java -jar DirectoryBookmarks.jar i >> ~/.bashrc`
 3. Re-open the terminal emulator.
 
-**Note:** The easiest way for Ubuntu is to download and run the installation script [installDirectoryBookmarks.sh](../main/java/net/ponec/script/installDirectoryBookmarks.sh).
+**Note:** The easiest way for Ubuntu is to download and run the installation script [installDirectoryBookmarks.sh](../src/main/java/net/ponec/script/installDirectoryBookmarks.sh).
 
 ### For the Windows PowerShell:
 
