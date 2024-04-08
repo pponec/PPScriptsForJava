@@ -37,7 +37,7 @@ However, connecting a database driver will be necessary.
 
 ```java
 void mainStart(Connection dbConnection) throws Exception {
-    try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
+    try (var builder = new SqlParamBuilder(dbConnection)) {
         System.out.println("# CREATE TABLE");
         builder.sql("""
                         CREATE TABLE employee
