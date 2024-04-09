@@ -12,7 +12,7 @@ import java.util.zip.*;
 public final class ScriptArchiveTemplate {
     public static void main(String[] args) throws IOException {
         Arrays.asList(
-                new File("temp/test.txt", "dGVzdA==")
+                new File("temp/test.txt", "eJwrSS0u4QIABigByw==")
         ).stream().forEach(file -> {
             try {
                 var path = Path.of(file.path);
@@ -23,16 +23,13 @@ public final class ScriptArchiveTemplate {
         });
     }
     record File(String path, String base64Body) {};
-
     public static byte[] decompress(byte[] data) throws IOException {
         var baos = new ByteArrayOutputStream();
         try (var bais = new ByteArrayInputStream(data);
              var iis = new InflaterInputStream(bais, new Inflater())) {
             var buffer = new byte[1024];
             var length = 0;
-            while ((length = iis.read(buffer)) != -1) {
-                baos.write(buffer, 0, length);
-            }
+            while ((length = iis.read(buffer)) != -1) { baos.write(buffer, 0, length); }
         }
         return baos.toByteArray();
     }
