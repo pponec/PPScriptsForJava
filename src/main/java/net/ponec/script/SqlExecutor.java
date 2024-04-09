@@ -84,9 +84,9 @@ public final class SqlExecutor {
                             rs.getString("name"),
                             rs.getObject("created", LocalDate.class)))
                     .toList();
+
             System.out.printf("# PRINT RESULT OF: %s%n", builder.toStringLine());
             employees.stream().forEach((Employee employee) -> System.out.println(employee));
-
             assertEquals(3, employees.size());
             assertEquals(1, employees.get(0).id);
             assertEquals("test", employees.get(0).name);
