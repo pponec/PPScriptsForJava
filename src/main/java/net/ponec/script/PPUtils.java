@@ -18,7 +18,6 @@
 
 package net.ponec.script;
 
-import org.jetbrains.annotations.NotNull;
 import javax.tools.ToolProvider;
 import java.io.*;
 import java.net.URI;
@@ -33,7 +32,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
 
 /**
  * Usage and examples:
@@ -54,7 +56,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.0.7";
+    private final String appVersion = "1.0.8";
 
     private final Class<?> mainClass = getClass();
 
@@ -127,8 +129,8 @@ public final class PPUtils {
                 final var json = Files.readString(Path.of(args.get(2).orElse("?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
-            case "upgrade" -> {
-                new Utilities().download();
+            case "sa", "scriptArchive" -> {
+                new ScritptArchiveBuilder().build(args.get(1).orElse("ScriptArchive.java"), args.subArray(2).toList());
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -279,6 +281,72 @@ public final class PPUtils {
 
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
+    /** Build a script archiv */
+    class ScritptArchiveBuilder {
+        public void build(String archive, List<String> archivers) throws IOException {
+            build(Path.of(archive), archivers.stream().map(f -> Path.of(f)).toList());
+        }
+        public void build(Path archive, List<Path> archivers) throws IOException {
+            Files.writeString(archive, classBody(archive, archivers));
+        }
+        private String encodedCompressedFileBody(Path file) {
+            try {
+                return Base64.getEncoder().encodeToString(compress(Files.readAllBytes(file)));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        private String classBody(Path classFile, List<Path> files) {
+            var fileTemplate = "new File(\"%s\", \"%s\")";
+            var textFiles = files.stream()
+                    .map(file -> fileTemplate.formatted(file.toString(), encodedCompressedFileBody(file)))
+                    .collect(Collectors.joining(",\n\t\t"));
+            var cFile = classFile.getFileName().toString();
+            var i = cFile.indexOf('.');
+            if (i > 0) { cFile = cFile.substring(0, i); }
+            var classTemplate = """
+                    import java.io.*;
+                    import java.nio.file.*;
+                    import java.util.*;
+                    import java.util.zip.*;
+                    /** @version %s */
+                    public final class %s {
+                        public static void main(String[] args) throws IOException {
+                            Arrays.asList(
+                                    %s
+                            ).stream().forEach(file -> {
+                                try {
+                                    var path = Path.of(file.path);
+                                    if (path.getParent() != null) Files.createDirectories(path.getParent());
+                                    Files.write(path, decompress(Base64.getDecoder().decode(file.base64Body)));
+                                    System.out.println("Restored: " + path);
+                                } catch (IOException e) { throw new RuntimeException("Extracting the file %s fails".formatted(file.path), e); }
+                            });
+                        }
+                        record File(String path, String base64Body) {};
+                        public static byte[] decompress(byte[] data) throws IOException {
+                            var baos = new ByteArrayOutputStream();
+                            try (var bais = new ByteArrayInputStream(data);
+                                var iis = new InflaterInputStream(bais, new Inflater())) {
+                                var buffer = new byte[1024];
+                                var length = 0;
+                                while ((length = iis.read(buffer)) != -1) { baos.write(buffer, 0, length); }
+                            }
+                            return baos.toByteArray();
+                        }
+                    }
+                    """.formatted(LocalDateTime.now(), cFile, textFiles, "%s");
+            return classTemplate;
+        }
+        public byte[] compress(byte[] data) throws IOException {
+            var baos = new ByteArrayOutputStream();
+            try (var dos = new DeflaterOutputStream(baos, new Deflater())) {
+                dos.write(data);
+            }
+            return baos.toByteArray();
+        }
+    }
+
     class Utilities {
 
         /** Compile the script and build it to the executable JAR file */
@@ -403,7 +471,6 @@ public final class PPUtils {
     /** The immutable Array wrapper with utilities (from the Ujorm framework) */
     record Array<T>(T[] array) {
 
-        @NotNull
         public Array<T> clone() {
             return new Array<>(toArray());
         }
@@ -442,7 +509,7 @@ public final class PPUtils {
 
         /** @param from Negative value is supported */
         public Array<T> subArray(final int from) {
-            final var frm = from < 0 ? array.length - from : from;
+            final var frm = from < 0 ? array.length + from : from;
             final var result = Arrays.copyOfRange(array, Math.min(frm, array.length), array.length);
             return new Array<>(result);
         }
@@ -481,7 +548,7 @@ public final class PPUtils {
         }
 
         @Override
-        public boolean equals(@NotNull final Object obj) {
+        public boolean equals(final Object obj) {
             return (obj instanceof Array objArray) && Arrays.equals(array, objArray.array);
         }
 
