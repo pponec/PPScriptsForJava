@@ -7,14 +7,16 @@ package net.ponec.script;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.zip.*;
-/** @version 2024-04-10T20:00 */
+/** A template for the Script Archive for Java 17
+ * @see PPUtils.ScriptArchiveBuilder#build(Path, List) 
+ * @version 2024-04-10T20:00 */
 public final class ScriptArchiveTemplate {
     public static void main(String[] args) throws IOException {
-        Arrays.asList(
+        Stream.of(
                 new File("temp/test.txt", "eJwrSS0u4QIABigByw==")
-        ).stream().forEach(file -> {
-            try {
+        ).forEach(file -> { try {
                 var path = Path.of(file.path);
                 if (path.getParent() != null) Files.createDirectories(path.getParent());
                 Files.write(path, decompress(Base64.getDecoder().decode(file.base64Body)));

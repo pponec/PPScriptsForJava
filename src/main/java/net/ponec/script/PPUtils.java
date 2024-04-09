@@ -130,7 +130,7 @@ public final class PPUtils {
                 out.println(Json.of(json).get(key).orElse(""));
             }
             case "sa", "scriptArchive" -> {
-                new ScritptArchiveBuilder().build(args.get(1).orElse("ScriptArchive.java"), args.subArray(2).toList());
+                new ScriptArchiveBuilder().build(args.get(1).orElse("ScriptArchive.java"), args.subArray(2).toList());
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -282,7 +282,7 @@ public final class PPUtils {
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
     /** Build a script archiv */
-    class ScritptArchiveBuilder {
+    class ScriptArchiveBuilder {
         public void build(String archive, List<String> archivers) throws IOException {
             build(Path.of(archive), archivers.stream().map(f -> Path.of(f)).toList());
         }
@@ -312,10 +312,9 @@ public final class PPUtils {
                     /** @version %s */
                     public final class %s {
                         public static void main(String[] args) throws IOException {
-                            Arrays.asList(
+                            java.util.stream.Stream.of(
                                     %s
-                            ).stream().forEach(file -> {
-                                try {
+                            ).forEach(file -> { try {
                                     var path = Path.of(file.path);
                                     if (path.getParent() != null) Files.createDirectories(path.getParent());
                                     Files.write(path, decompress(Base64.getDecoder().decode(file.base64Body)));
