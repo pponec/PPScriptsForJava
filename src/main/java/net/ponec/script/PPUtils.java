@@ -32,7 +32,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
@@ -56,7 +55,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.0.8";
+    private final String appVersion = "1.0.9";
 
     private final Class<?> mainClass = getClass();
 
@@ -283,59 +282,58 @@ public final class PPUtils {
 
     /** Build a script archiv */
     class ScriptArchiveBuilder {
-        public void build(String archive, List<String> archivers) throws IOException {
-            build(Path.of(archive), archivers.stream().map(f -> Path.of(f)).toList());
+        public void build(String archiveFile, List<String> files) throws IOException {
+            build(Path.of(archiveFile), files.stream().map(f -> Path.of(f)).toList());
         }
-        public void build(Path archive, List<Path> archivers) throws IOException {
-            Files.writeString(archive, classBody(archive, archivers));
-        }
-        private String encodedCompressedFileBody(Path file) {
-            try {
-                return Base64.getEncoder().encodeToString(compress(Files.readAllBytes(file)));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        private String classBody(Path classFile, List<Path> files) {
-            var fileTemplate = "new File(\"%s\", \"%s\")";
-            var textFiles = files.stream()
-                    .map(file -> fileTemplate.formatted(file.toString(), encodedCompressedFileBody(file)))
-                    .collect(Collectors.joining(",\n\t\t"));
+        public void build(Path classFile, List<Path> files) throws IOException {
+            var splitSequence = "@@@";
             var cFile = classFile.getFileName().toString();
-            var i = cFile.indexOf('.');
-            if (i > 0) { cFile = cFile.substring(0, i); }
-            var classTemplate = """
+            var dotIndex = cFile.indexOf('.');
+            if (dotIndex > 0) { cFile = cFile.substring(0, dotIndex); }
+            var classBody = """
                     import java.io.*;
+                    import java.nio.charset.*;
                     import java.nio.file.*;
                     import java.util.*;
                     import java.util.zip.*;
                     /** @version %s */
                     public final class %s {
                         public static void main(String[] args) throws IOException {
-                            java.util.stream.Stream.of(
-                                    %s
-                            ).forEach(file -> { try {
-                                    var path = Path.of(file.path);
-                                    if (path.getParent() != null) Files.createDirectories(path.getParent());
-                                    Files.write(path, decompress(Base64.getDecoder().decode(file.base64Body)));
-                                    System.out.println("Restored: " + path);
-                                } catch (IOException e) { throw new RuntimeException("Extracting the file %s fails".formatted(file.path), e); }
-                            });
+                            java.util.stream.Stream.of(null %s
+                            ).filter(t -> t != null).forEach(file -> write(file));
                         }
                         record File(String path, String base64Body) {};
-                        public static byte[] decompress(byte[] data) throws IOException {
-                            var baos = new ByteArrayOutputStream();
-                            try (var bais = new ByteArrayInputStream(data);
-                                var iis = new InflaterInputStream(bais, new Inflater())) {
-                                var buffer = new byte[1024];
-                                var length = 0;
-                                while ((length = iis.read(buffer)) != -1) { baos.write(buffer, 0, length); }
+                        public static void write(File file) {
+                            try {
+                                var path = Path.of(file.path);
+                                if (path.getParent() != null) Files.createDirectories(path.getParent());
+                                var base64is = new ByteArrayInputStream(file.base64Body.getBytes(StandardCharsets.US_ASCII));
+                                var is = new InflaterInputStream(Base64.getDecoder().wrap(base64is), new Inflater());
+                                try (var os = Files.newOutputStream(path)) {
+                                    var buffer = new byte[1024];
+                                    var length = 0;
+                                    while ((length = is.read(buffer)) != -1) { os.write(buffer, 0, length); }
+                                }
+                                System.out.println("Restored: " + path);
+                            } catch (IOException e) {
+                                throw new IllegalArgumentException("Failed to extract file: " + file.path, e);
                             }
-                            return baos.toByteArray();
                         }
                     }
-                    """.formatted(LocalDateTime.now(), cFile, textFiles, "%s");
-            return classTemplate;
+                    """.formatted(LocalDateTime.now(), cFile, splitSequence, "%s")
+                    .split(splitSequence);
+
+            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(classFile)) , false, StandardCharsets.UTF_8)) {
+                os.print(classBody[0]);
+                for (var file : files) {
+                    os.print("\n\t\t, new File(\"");
+                    os.print(file.toString().replace('\\', '/'));
+                    os.print("\", \"");
+                    os.print(Base64.getEncoder().encodeToString(compress(Files.readAllBytes(file))));
+                    os.print("\")");
+                }
+                os.print(classBody[1]);
+            }
         }
         public byte[] compress(byte[] data) throws IOException {
             var baos = new ByteArrayOutputStream();
