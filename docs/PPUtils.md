@@ -16,9 +16,8 @@ Services called from the command line for general use.
 * `PPUtils key json ` - get a value by the (composite) key, for example: `"a.b.c"`
 * `PPUtils scriptArchive Archive.java File1 File2 File3` - Creates a self-extracting archive to a script of Java 17 format.
    File contents are compressed and converted using Base64.
-   See an example of the Java archive. To extract all archive files write to console expression: `java Archive.java` .
-   Take a look at the Java archive example. 
-   To extract all archive files, type the expression in the console
+   To extract all archive files, type the expression in the console: `java Archive.java` .
+   Take a look at the Java archive example.
 ```java
 import java.io.*;
 import java.nio.charset.*;
