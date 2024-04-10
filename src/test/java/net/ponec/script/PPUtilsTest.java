@@ -1,6 +1,16 @@
 package net.ponec.script;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -107,4 +117,34 @@ class PPUtilsTest {
         assertEquals(map.get("z").orElse(undef), undef);
     }
 
+    @Test
+    void archive() throws IOException {
+        var compressor = new PPUtils.ScriptArchiveBuilder();
+        var archive = Files.createTempFile("Archiv", ".java");
+        var file1 =  Files.createTempFile("Test1", ".txt");
+        var file2 =  Files.createTempFile("Test2", ".txt");
+
+        try {
+            Files.writeString(file1, "Hallo World");
+            Files.writeString(file2, IntStream.range(0, 1000).mapToObj(i -> ".").collect(Collectors.joining()));
+            compressor.build(archive, List.of(file1, file2));
+            Assertions.assertTrue(Files.isReadable(archive));
+
+            var javaClass = Files.readString(archive);
+            Assertions.assertTrue(javaClass.contains("/" + file1.getFileName()));
+            Assertions.assertTrue(javaClass.contains("/" + file2.getFileName()));
+            Assertions.assertTrue(javaClass.contains("eJzzSMzJyVcIzy/KSQEAF+MEGQ=="));
+            Assertions.assertTrue(javaClass.contains("eJzT0xsFo2AUDHcAAGYRs7E="));
+        } finally {
+            Stream.of(archive, file1, file2).forEach(f -> deleteFile(f));
+        }
+    }
+
+    private static void deleteFile(Path f) {
+        try {
+            Files.deleteIfExists(f);
+        } catch (IOException e) {
+            Logger.getLogger(PPUtilsTest.class.getName()).severe("Can't delete file: " + f);
+        }
+    }
 }

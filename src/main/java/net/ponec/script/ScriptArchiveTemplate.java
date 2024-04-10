@@ -16,9 +16,8 @@ public final class ScriptArchiveTemplate {
     public static void main(String[] args) throws IOException {
         java.util.stream.Stream.of(null
             , new File("temp/test.txt", "eJwDAAAAAAE=")
-        ).filter(t -> t != null).forEach(file -> write(file));
+        ).skip(1).forEach(file -> write(file));
     }
-    record File(String path, String base64Body) {};
     public static void write(File file) {
         try {
             var path = Path.of(file.path);
@@ -35,4 +34,5 @@ public final class ScriptArchiveTemplate {
             throw new IllegalArgumentException("Failed to extract file: " + file.path, e);
         }
     }
+    record File(String path, String base64Body) {}
 }

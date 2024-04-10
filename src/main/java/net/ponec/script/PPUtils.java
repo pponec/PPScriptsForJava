@@ -49,6 +49,7 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils base64encode "file.bin"} - encode any (binary) file.</li>
  *    <li>{@code java PPUtils base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
  *    <li>{@code java PPUtils key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
+ *    <li>{@code java PPUtils scriptArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
  * </ul>
  */
 public final class PPUtils {
@@ -278,10 +279,8 @@ public final class PPUtils {
         }
     }
 
-    //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
-
     /** Build a script archiv */
-    class ScriptArchiveBuilder {
+    static final class ScriptArchiveBuilder {
         public void build(String archiveFile, List<String> files) throws IOException {
             build(Path.of(archiveFile), files.stream().map(f -> Path.of(f)).toList());
         }
@@ -300,9 +299,8 @@ public final class PPUtils {
                     public final class %s {
                         public static void main(String[] args) throws IOException {
                             java.util.stream.Stream.of(null %s
-                            ).filter(t -> t != null).forEach(file -> write(file));
+                            ).skip(1).forEach(file -> write(file));
                         }
-                        record File(String path, String base64Body) {};
                         public static void write(File file) {
                             try {
                                 var path = Path.of(file.path);
@@ -319,6 +317,7 @@ public final class PPUtils {
                                 throw new IllegalArgumentException("Failed to extract file: " + file.path, e);
                             }
                         }
+                        record File(String path, String base64Body) {}
                     }
                     """.formatted(LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
@@ -343,6 +342,8 @@ public final class PPUtils {
             return baos.toByteArray();
         }
     }
+
+    //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
     class Utilities {
 
