@@ -183,19 +183,9 @@ public final class PPUtils {
                     : inpFile.resolveSibling(inpFileName.substring(0, inpFileName.lastIndexOf(".")));
             final var encoder = Base64.getEncoder();
             final var decoder = Base64.getDecoder();
-            final var buffer = new byte[2000];
-            var byteCount = 0;
-            try (
-                    final var is = encode ? Files.newInputStream(inpFile) : decoder.wrap(Files.newInputStream(inpFile));
-                    final var os = encode ? encoder.wrap(Files.newOutputStream(outFile)) : Files.newOutputStream(outFile);
-            ) {
-                while ((byteCount = is.read(buffer)) != -1) {
-                    final var b2 = byteCount < buffer.length
-                            ? Arrays.copyOfRange(buffer, 0, byteCount)
-                            : buffer;
-                    os.write(b2);
-                }
-            }
+            try ( final var is = encode ? Files.newInputStream(inpFile) : decoder.wrap(Files.newInputStream(inpFile));
+                  final var os = encode ? encoder.wrap(Files.newOutputStream(outFile)) : Files.newOutputStream(outFile);
+            ) { is.transferTo(os); }
             out.printf("Converted file has a name: '%s'%n", outFile);
         }
     }
@@ -280,7 +270,7 @@ public final class PPUtils {
     }
 
     /** Build a script archiv */
-    static final class ScriptArchiveBuilder {
+    public static final class ScriptArchiveBuilder {
         public void build(String archiveFile, List<String> files) throws IOException {
             build(Path.of(archiveFile), files.stream().map(f -> Path.of(f)).toList());
         }
@@ -295,51 +285,87 @@ public final class PPUtils {
                     import java.nio.file.*;
                     import java.util.*;
                     import java.util.zip.*;
+                    import java.util.stream.Stream;
                     /** @version %s */
                     public final class %s {
                         public static void main(String[] args) throws IOException {
-                            java.util.stream.Stream.of(null %s
+                            Stream.of(null %s
                             ).skip(1).forEach(file -> write(file));
                         }
-                        public static void write(File file) {
+                        static void write(File file) {
                             try {
                                 var path = Path.of(file.path);
                                 if (path.getParent() != null) Files.createDirectories(path.getParent());
-                                var base64is = new ByteArrayInputStream(file.base64Body.getBytes(StandardCharsets.US_ASCII));
+                                var base64is = new Base64InputStream(file.base64Body);
                                 var is = new InflaterInputStream(Base64.getDecoder().wrap(base64is), new Inflater());
-                                try (var os = Files.newOutputStream(path)) {
-                                    var buffer = new byte[1024];
-                                    var length = 0;
-                                    while ((length = is.read(buffer)) != -1) { os.write(buffer, 0, length); }
-                                }
+                                try (var os = new PrintStream(Files.newOutputStream(path))) { is.transferTo(os); }
                                 System.out.println("Restored: " + path);
                             } catch (IOException e) {
                                 throw new IllegalArgumentException("Failed to extract file: " + file.path, e);
                             }
                         }
-                        record File(String path, String base64Body) {}
+                        record File(String path, String... base64Body) {}
+                        static final class Base64InputStream extends InputStream {
+                            private final StringReader[] readers;
+                            private final byte[] oneByte = new byte[1];
+                            private char[] buffer = new char[0];
+                            private int idx;
+                            public Base64InputStream(String... body) {
+                                this.readers = Arrays.stream(body).map(r -> new StringReader(r)).toArray(StringReader[]::new);
+                            }
+                            @Override public int read(final byte[] b, final int off, final int len) throws IOException {
+                                if (buffer.length < len) { buffer = new char[len]; }
+                                final var result = readers[idx].read(buffer, off, len);
+                                for (int i = 0; i < result; i++) { b[i] = (byte) buffer[i]; }
+                                return (result >= 0 || ++idx == readers.length) ? result : read(b, off, len);
+                            }
+                            @Override public int read() throws IOException {
+                                final var result = read(oneByte, 0, 1);
+                                return result < 0 ? result : oneByte[0];
+                            }
+                            @Override public void close() { Stream.of(readers).forEach(r -> r.close()); }
+                            @Override public long skip(long n) throws IOException { throw new UnsupportedEncodingException(); }
+                        }
                     }
                     """.formatted(LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
 
-            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(classFile)) , false, StandardCharsets.UTF_8)) {
+            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(classFile)), false, StandardCharsets.UTF_8)) {
                 os.print(classBody[0]);
                 for (var file : files) {
                     os.print("\n\t\t, new File(\"");
                     os.print(file.toString().replace('\\', '/'));
                     os.print("\", \"");
-                    os.print(Base64.getEncoder().encodeToString(compress(Files.readAllBytes(file))));
+                    try (var fis = Files.newInputStream(file)) {
+                        final var eos = new SplitterOutputStream(2_000);
+                        final var b64os = Base64.getEncoder().wrap(eos);
+                        try (var dos = new DeflaterOutputStream(b64os, new Deflater())) {
+                            fis.transferTo(dos);
+                        }
+                        eos.writeTo(os);
+                    }
                     os.print("\")");
                 }
                 os.print(classBody[1]);
             }
         }
-        public byte[] compress(byte[] data) throws IOException {
-            var baos = new ByteArrayOutputStream();
-            try (var dos = new DeflaterOutputStream(baos, new Deflater())) {
-                dos.write(data);
+
+        private static class SplitterOutputStream extends ByteArrayOutputStream {
+            public SplitterOutputStream(int size) {
+                super(size);
             }
-            return baos.toByteArray();
+
+            @Override
+            public synchronized void writeTo(OutputStream out) throws IOException {
+                final var group = 65_000; // Max length of the String literal in Java code.
+                final var separator = "\",\"".getBytes(StandardCharsets.UTF_8);
+                for (int i = 0; i < count; i++) {
+                    out.write(buf[i]);
+                    if ((i + 1) % group == 0 && i + 1 != count) {
+                        out.write(separator);
+                    }
+                }
+            }
         }
     }
 
