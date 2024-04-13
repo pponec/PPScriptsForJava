@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -127,7 +127,7 @@ class PPUtilsTest {
         try {
             Files.writeString(file1, "Hallo World");
             Files.writeString(file2, IntStream.range(0, 1000).mapToObj(i -> ".").collect(Collectors.joining()));
-            compressor.build(archive, List.of(file1, file2));
+            compressor.build(archive, Set.of(file1, file2));
             Assertions.assertTrue(Files.isReadable(archive));
 
             var javaClass = Files.readString(archive);

@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
@@ -130,7 +131,7 @@ public final class PPUtils {
                 out.println(Json.of(json).get(key).orElse(""));
             }
             case "sa", "scriptArchive" -> {
-                new ScriptArchiveBuilder().build(args.get(1).orElse("ScriptArchive.java"), args.subArray(2).toList());
+                new ScriptArchiveBuilder().build(args.get(1).orElse("Archive.java"), args.subArray(2).toList());
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -272,23 +273,26 @@ public final class PPUtils {
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
         public void build(String archiveFile, List<String> files) throws IOException {
-            build(Path.of(archiveFile), files.stream().map(f -> Path.of(f)).toList());
+            build(Path.of(archiveFile), files.stream().map(f ->
+                    Path.of(f)).collect(Collectors.toUnmodifiableSet()));
+            System.out.println("%s.%s: archive created: %s"
+                    .formatted(PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile));
         }
-        public void build(Path classFile, List<Path> files) throws IOException {
+        public void build(Path javaArchiveFile, Set<Path> files) throws IOException {
+            validate(javaArchiveFile, files);
             var splitSequence = "@@@";
-            var cFile = classFile.getFileName().toString();
+            var cFile = javaArchiveFile.getFileName().toString();
             var dotIndex = cFile.indexOf('.');
             if (dotIndex > 0) { cFile = cFile.substring(0, dotIndex); }
             var classBody = """
                     import java.io.*;
-                    import java.nio.charset.*;
                     import java.nio.file.*;
                     import java.util.*;
                     import java.util.zip.*;
                     import java.util.stream.Stream;
                     /** @version %s */
                     public final class %s {
-                        public static void main(String[] args) throws IOException {
+                        public static void main(String[] args) {
                             Stream.of(null %s
                             ).skip(1).forEach(file -> write(file));
                         }
@@ -330,19 +334,18 @@ public final class PPUtils {
                     """.formatted(LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
 
-            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(classFile)), false, StandardCharsets.UTF_8)) {
+            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, StandardCharsets.UTF_8)) {
                 os.print(classBody[0]);
                 for (var file : files) {
                     os.print("\n\t\t, new File(\"");
                     os.print(file.toString().replace('\\', '/'));
                     os.print("\", \"");
                     try (var fis = Files.newInputStream(file)) {
-                        final var eos = new SplitterOutputStream(2_000);
+                        final var eos = new SplitOutputStream(os);
                         final var b64os = Base64.getEncoder().wrap(eos);
                         try (var dos = new DeflaterOutputStream(b64os, new Deflater())) {
                             fis.transferTo(dos);
                         }
-                        eos.writeTo(os);
                     }
                     os.print("\")");
                 }
@@ -350,22 +353,43 @@ public final class PPUtils {
             }
         }
 
-        private static class SplitterOutputStream extends ByteArrayOutputStream {
-            public SplitterOutputStream(int size) {
-                super(size);
+        public void validate(Path classFile, Collection<Path> files) {
+            if (!classFile.getFileName().toString().endsWith(".java")) {
+                throw new IllegalArgumentException("The archive must be a Java file: " + classFile);
             }
+            if (files.isEmpty()) {
+                throw new IllegalArgumentException("No file to archive as found");
+            }
+            files.stream().forEach(file -> {
+                if (!Files.isRegularFile(file) || !Files.isReadable(file))  {
+                    throw new IllegalArgumentException("The file was not found" + file);
+                }
+            });
+        }
 
+        static final class SplitOutputStream extends FilterOutputStream {
+            final byte[] separator = "\",\"".getBytes(StandardCharsets.UTF_8);
+            /* https://stackoverflow.com/questions/77417411/why-is-the-maximum-string-literal-length-in-java-65534 */
+            final int group = 65534;
+            private int counter = 0;
+
+            public SplitOutputStream(OutputStream out) {
+                super(out);
+            }
+            @Override public void write(final int b) throws IOException {
+                if (++counter % group == 0) {
+                    out.write(separator);
+                }
+                out.write(b);
+            }
             @Override
-            public synchronized void writeTo(OutputStream out) throws IOException {
-                final var group = 65_000; // Max length of the String literal in Java code.
-                final var separator = "\",\"".getBytes(StandardCharsets.UTF_8);
-                for (int i = 0; i < count; i++) {
-                    out.write(buf[i]);
-                    if ((i + 1) % group == 0 && i + 1 != count) {
-                        out.write(separator);
-                    }
+            public void write(final byte[] b, final int off, final int len) throws IOException {
+                for (int i = off, max = off + len; i < max; i++) {
+                    write(b[i]);
                 }
             }
+            @Override
+            public void close() throws IOException { /* Do nothing */ }
         }
     }
 
@@ -540,6 +564,10 @@ public final class PPUtils {
 
         public List<T> toList() {
             return List.of(array);
+        }
+
+        public Set<T> toSet() {
+            return Set.of(array);
         }
 
         public Stream<T> stream() {
