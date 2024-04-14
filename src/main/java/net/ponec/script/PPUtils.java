@@ -273,6 +273,7 @@ public final class PPUtils {
 
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
+        private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
         public void build(String archiveFile, List<String> files) throws IOException {
             build(Path.of(archiveFile), files.stream().map(f ->
                     Path.of(f)).collect(Collectors.toUnmodifiableSet()));
@@ -291,7 +292,9 @@ public final class PPUtils {
                     import java.util.*;
                     import java.util.zip.*;
                     import java.util.stream.Stream;
-                    /** @version %s */
+                    /** Extract files by statement: java %s.java
+                     * Powered by the <a href="%s">PPUtils</a>.
+                     * @version %s */
                     public final class %s {
                         public static void main(String[] args) {
                             Stream.of(null %s
@@ -332,7 +335,7 @@ public final class PPUtils {
                             @Override public long skip(long n) throws IOException { throw new UnsupportedEncodingException(); }
                         }
                     }
-                    """.formatted(LocalDateTime.now(), cFile, splitSequence, "%s")
+                    """.formatted(cFile, homeUrl, LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
 
             try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, StandardCharsets.UTF_8)) {
