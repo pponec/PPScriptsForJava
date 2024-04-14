@@ -52,6 +52,7 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
  *    <li>{@code java PPUtils scriptArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
  * </ul>
+ * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
  */
 public final class PPUtils {
 
