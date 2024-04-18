@@ -23,7 +23,7 @@ public final class DirectoryBookmarks {
 
     private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
     private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.9.4";
+    private final String appVersion = "1.9.5";
     private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     private final char cellSeparator = '\t';
     private final char comment = '#';
@@ -34,8 +34,8 @@ public final class DirectoryBookmarks {
     /** Shortcut for a home directory. Empty text is ignored. */
     private final String homeDirMark = "~";
     private final Class<?> mainClass = getClass();
-    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/development/src/%s/java/net/ponec/script/%s.java"
-            .formatted(true ? "main" : "development", appName);
+    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/%s/src/main/java/net/ponec/script/%s.java"
+            .formatted(!true ? "main" : "development", appName);
     private final File storeName;
     private final PrintStream out;
     private final PrintStream err;
@@ -52,7 +52,7 @@ public final class DirectoryBookmarks {
         }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
-                System.err, enforcedLinux, false).start(args);
+                System.err, enforcedLinux, false).mainRun(args);
     }
 
     DirectoryBookmarks(File storeName,
@@ -69,7 +69,7 @@ public final class DirectoryBookmarks {
     }
 
     /** The main object method */
-    public void start(Array<String> args) throws Exception {
+    public void mainRun(Array<String> args) throws Exception {
         final var statement = args.getFirst().orElse("");
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
@@ -88,7 +88,7 @@ public final class DirectoryBookmarks {
             }
             case "g", "get" -> { // get only one directory, default is the home.
                 var key = args.get(1).orElse(homeDirMark);
-                start(Array.of("l", key));
+                mainRun(Array.of("l", key));
             }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
@@ -190,6 +190,8 @@ public final class DirectoryBookmarks {
         switch (key) {
             case currentDirMark:
                 return currentDir;
+            case homeDirMark:
+                return USER_HOME;
             default:
                 var idx = key.indexOf(dirSeparator);
                 var extKey = (idx >= 0 ? key.substring(0, idx) : key) + cellSeparator;
@@ -333,7 +335,7 @@ public final class DirectoryBookmarks {
     }
 
     private void printInstall() {
-        var exePath = utils.getPathOfRunningApplication();
+        var exePath = utils.getPathOfRunningApplication().replace(USER_HOME, "$HOME");
         var javaHome = System.getProperty("java.home");
         if (isSystemWindows) {
             var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
@@ -442,13 +444,13 @@ public final class DirectoryBookmarks {
             final var protocol = "file:/";
             try {
                 final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
-                var result = location.toString();
-                if (isSystemWindows && result.startsWith(protocol)) {
-                    result = result.substring(protocol.length());
+                var path = location.toString();
+                if (isSystemWindows && path.startsWith(protocol)) {
+                    path = path.substring(protocol.length());
                 } else {
-                    result = location.getPath();
+                    path = location.getPath();
                 }
-                return URLDecoder.decode(result, StandardCharsets.UTF_8);
+                return URLDecoder.decode(path, StandardCharsets.UTF_8);
             } catch (Exception e) {
                 return "%s.%s".formatted(appName, "java");
             }
