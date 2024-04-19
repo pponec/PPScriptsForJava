@@ -3,7 +3,7 @@
 # Java version 17+ is required.
 
 set -e
-javaExe() {
+javax() {
   if [ -n "$JAVA_HOME" ]
   then "$JAVA_HOME/bin/java" "$@"
   else java "$@"
@@ -11,13 +11,12 @@ javaExe() {
 }
 
 appName=DirectoryBookmarks
-sourceUrl=https://raw.githubusercontent.com/pponec/$appName/main/$appName.java
-javaExe=$(getJavaExe)
+sourceUrl=https://raw.githubusercontent.com/pponec/PPScriptsForJava/main/src/main/java/net/ponec/script/$appName.java
 
-$javaExe --version
+javax --version
 wget -O $appName.java $sourceUrl
-$javaExe $appName.java c
-$javaExe -jar $appName.jar i >> ~/.bashrc
+$javax $appName.java c
+$javax -jar $appName.jar i >> ~/.bashrc
 
 echo "The application $appName has been successfully installed to the directory: $PWD"
 echo "Reload a configuration by the next statement: . ~/.bashrc"
