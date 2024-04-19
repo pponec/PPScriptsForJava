@@ -15,8 +15,8 @@ sourceUrl=https://raw.githubusercontent.com/pponec/PPScriptsForJava/main/src/mai
 
 javax --version
 wget -O $appName.java $sourceUrl
-$javax $appName.java c
-$javax -jar $appName.jar i >> ~/.bashrc
+javax $appName.java c
+javax -jar $appName.jar i >> ~/.bashrc
 
 echo "The application $appName has been successfully installed to the directory: $PWD"
 echo "Reload a configuration by the next statement: . ~/.bashrc"
