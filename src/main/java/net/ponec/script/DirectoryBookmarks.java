@@ -495,7 +495,6 @@ public final class DirectoryBookmarks {
 
         private void removePackage(Path fullJavaClass) throws IOException {
             var packageRegexp = "package %s;".formatted(mainClass.getPackageName());
-            System.out.println("packageRegexp: "  + packageRegexp);
             var script = Files.readString(fullJavaClass);
             script = script.replaceFirst(packageRegexp, "");
             Files.writeString(fullJavaClass, script);
