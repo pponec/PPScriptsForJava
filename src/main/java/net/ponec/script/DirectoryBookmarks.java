@@ -19,30 +19,30 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class DirectoryBookmarks {
-    private static final String USER_HOME = System.getProperty("user.home");
+    static final String USER_HOME = System.getProperty("user.home");
 
-    private final String homePage = "https://github.com/pponec/DirectoryBookmarks";
-    private final String appName = getClass().getSimpleName();
-    private final String appVersion = "1.9.5";
-    private final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
-    private final char cellSeparator = '\t';
-    private final char comment = '#';
-    private final String newLine = System.lineSeparator();
-    private final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
-    private final String currentDir = System.getProperty("user.dir");
-    private final String currentDirMark = ".";
+    final String homePage = "https://github.com/pponec/DirectoryBookmarks";
+    final String appName = getClass().getSimpleName();
+    final String appVersion = "1.9.5";
+    final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
+    final char cellSeparator = '\t';
+    final char comment = '#';
+    final String newLine = System.lineSeparator();
+    final String dataHeader = "%s %s %s (%s)".formatted(comment, appName, appVersion, homePage);
+    final String currentDir = System.getProperty("user.dir");
+    final String currentDirMark = ".";
     /** Shortcut for a home directory. Empty text is ignored. */
-    private final String homeDirMark = "~";
-    private final Class<?> mainClass = getClass();
-    private final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/%s/src/main/java/net/ponec/script/%s.java"
+    final String homeDirMark = "~";
+    final Class<?> mainClass = getClass();
+    final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/%s/src/main/java/net/ponec/script/%s.java"
             .formatted(!true ? "main" : "development", appName);
-    private final File storeName;
-    private final PrintStream out;
-    private final PrintStream err;
-    private final boolean exitByException;
-    private final boolean isSystemWindows;
-    private final char dirSeparator;
-    private final Utilities utils = new Utilities();
+    final File storeName;
+    final PrintStream out;
+    final PrintStream err;
+    final boolean exitByException;
+    final boolean isSystemWindows;
+    final char dirSeparator;
+    final Utilities utils = new Utilities();
 
     public static void main(String[] arguments) throws Exception {
         var args = Array.of(arguments);
@@ -276,7 +276,7 @@ public final class DirectoryBookmarks {
     }
 
     private File getTempStoreFile() throws IOException {
-        return File.createTempFile(".dirbook", "", storeName.getParentFile());
+        return File.createTempFile(".dirbook", ".temp", storeName.getParentFile());
     }
 
     private void fixMarksOfMissingDirectories() throws IOException {
