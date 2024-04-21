@@ -35,7 +35,7 @@ public final class DirectoryBookmarks {
     final String homeDirMark = "~";
     final Class<?> mainClass = getClass();
     final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/%s/src/main/java/net/ponec/script/%s.java"
-            .formatted(!true ? "main" : "development", appName);
+            .formatted(true ? "main" : "development", appName);
     final File storeName;
     final PrintStream out;
     final PrintStream err;
