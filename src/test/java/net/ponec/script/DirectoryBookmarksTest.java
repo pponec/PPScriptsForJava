@@ -9,19 +9,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class DirectoryBookmarksTest {
 
+    private static final String homeDir = DirectoryBookmarks.USER_HOME.toString();
     private static final Charset charset = StandardCharsets.UTF_8;
 
     @Test
@@ -31,27 +30,27 @@ public class DirectoryBookmarksTest {
         instance.mainRun(array("save", "/test/dev", "bin", "My", "comment"));
         var bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
-                bin	/test/dev	# My comment
+                bin\t/test/dev	# My comment
                 """.formatted(instance.appVersion);
-        assertEquals(bookmarks, ctx.bookmarks());
+        assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
 
         instance.mainRun(array("save", "/test/conf", "conf"));
         bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
-                conf	/test/conf
-                bin	/test/dev	# My comment
+                conf\t/test/conf
+                bin\t/test/dev	# My comment
                 """.formatted(instance.appVersion);
-        assertEquals(bookmarks, ctx.bookmarks());
+        assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
 
         instance.mainRun(array("save", "/test/bin", "bin"));
         bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
-                bin	/test/bin
-                conf	/test/conf
+                bin\t/test/bin
+                conf\t/test/conf
                 """.formatted(instance.appVersion);
-        assertEquals(bookmarks, ctx.bookmarks());
+        assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
         assertEquals("", ctx.getErr());
 
@@ -59,42 +58,101 @@ public class DirectoryBookmarksTest {
         assertEquals("/test/bin\n", ctx.getOut());
         assertEquals("", ctx.getErr());
 
-        var ex = assertThrows(RuntimeException.class, () ->
-                instance.mainRun(array("list", "xxx")));
-        assertEquals("Bookmark [xxx] has no directory.", ex.getMessage());
-
-        instance.mainRun(array("list"));
         bookmarks = """
-                bin	/test/bin
-                conf	/test/conf
-                """.formatted(instance.appVersion);
-        assertEquals(bookmarks, ctx.getOut());
+                bin\t/test/bin
+                conf\t/test/conf
+                """.trim();
+        assertEquals(bookmarks, ctx.bookmarksString());
         assertEquals("", ctx.getErr());
 
         instance.mainRun(array("version"));
         assertEquals(instance.appVersion + "\n", ctx.getOut());
 
         instance.mainRun(array("delete", "conf"));
-        instance.mainRun(array("list"));
-        bookmarks = "bin	/test/bin\n";
-        assertEquals(bookmarks, ctx.getOut());
+        bookmarks = "bin\t/test/bin";
+        assertEquals(bookmarks, ctx.bookmarksString());
         assertEquals("", ctx.getErr());
+
+        var ex = assertThrows(RuntimeException.class, () ->
+                instance.mainRun(array("list", "conf")));
+        assertEquals("Bookmark [conf] has no directory.", ex.getMessage());
+
+        instance.mainRun(array("list", "~"));
+        assertEquals(homeDir + "\n", ctx.getOut());
+        assertEquals("", ctx.getErr());
+
+        bookmarks = "bin\t/test/bin";
+        assertEquals(bookmarks, ctx.bookmarksString());
     }
 
-    /** An integration tests check available URLs */
     @Test
-    void checkUrls() throws IOException {
+    void mainRunHomeTest() throws Exception {
         var ctx = DirBookContext.of();
-        var homeUrl = new URL(ctx.instance.homePage);
-        var sourceUrl = new URL(ctx.instance.sourceUrl);
+        var instance = ctx.instance;
+        instance.mainRun(array("save", homeDir + "/test/bin", "bin", "My", "comment"));
 
-        for (var url : List.of(homeUrl, sourceUrl)) {
-            var connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            var responseCode = connection.getResponseCode();
-            assertEquals(200, responseCode, url.toString());
-        }
+        var bookmarks = """
+                # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
+                bin\t~/test/bin	# My comment
+                """.formatted(instance.appVersion);
+        assertEquals(bookmarks, ctx.bookmarkFile());
+        assertEquals("", ctx.getOut());
+
+        instance.mainRun(array("get"));
+        assertEquals(homeDir + "\n", ctx.getOut());
+
+        instance.mainRun(array("save", "~", "myHome"));
+        bookmarks = """
+                # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
+                myHome\t~
+                bin\t~/test/bin	# My comment
+                """.formatted(instance.appVersion);
+        assertEquals(bookmarks, ctx.bookmarkFile());
+        assertEquals(2, ctx.bookmarkStream().count());
+
     }
+
+    @Test
+    void mainRunFixTest() throws Exception {
+        var random = new Random();
+        var ctx = DirBookContext.of();
+        var instance = ctx.instance;
+
+        instance.mainRun(array("save", homeDir, "home"));
+        assertEquals(1, ctx.bookmarkStream().count());
+
+
+        instance.mainRun(array("save", "/test/%s.tmp".formatted(random.nextLong()) , "temp"));
+        assertEquals(2, ctx.bookmarkStream().count());
+
+
+        instance.mainRun(array("fix"));
+        var removed = ctx.getOut();
+        assertTrue(removed.startsWith("Removed: temp"));
+        assertEquals(1, ctx.bookmarkStream().count());
+    }
+
+    @Test
+    void mainGetAllBookmarksOfDirTest() throws Exception {
+        var ctx = DirBookContext.of();
+        var instance = ctx.instance;
+        var myDir = "/temp/bin/local";
+
+        instance.mainRun(array("save", myDir, "a"));
+        instance.mainRun(array("save", myDir, "b"));
+        instance.mainRun(array("save", myDir, "c"));
+        instance.mainRun(array("save", homeDir, "home"));
+
+        try (var lines = ctx.bookmarkStream()) {
+            assertEquals(4, lines.count());
+        }
+
+        instance.mainRun(array("bookmarks", myDir));
+        var output = ctx.getOutLines().collect(Collectors.joining(","));
+        assertEquals("a,b,c", output);
+    }
+
+    // =========== UTILS ===========
 
     private DirectoryBookmarks.Array<String> array(String... args) {
         return DirectoryBookmarks.Array.of(args);
@@ -122,8 +180,18 @@ public class DirectoryBookmarksTest {
             return result;
         }
 
-        public String bookmarks() throws IOException {
+        public String bookmarkFile() throws IOException {
             return Files.readString(storeName.toPath());
+        }
+
+        public Stream<String> bookmarkStream() throws Exception {
+            out.reset();
+            instance.mainRun(DirectoryBookmarks.Array.of("list"));
+            return getOutLines();
+        }
+
+        public String bookmarksString() throws Exception {
+            return bookmarkStream().collect(Collectors.joining("\n"));
         }
 
         @Override
@@ -141,6 +209,10 @@ public class DirectoryBookmarksTest {
             return new DirBookContext(bookmarks, file, outStream, outPrint, errStream, errPrint);
         }
 
+        public Stream<String> getOutLines() {
+            return Stream.of(getOut().trim().split("\n"));
+        }
+
         private static File createFile() {
             try {
                 var result = File.createTempFile("directoryBookmark", ".temp");
@@ -151,5 +223,4 @@ public class DirectoryBookmarksTest {
             }
         }
     }
-
 }
