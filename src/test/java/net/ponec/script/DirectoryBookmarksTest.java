@@ -9,9 +9,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -26,7 +30,7 @@ public class DirectoryBookmarksTest {
         var instance = ctx.instance;
         instance.mainRun(array("save", "/test/dev", "bin", "My", "comment"));
         var bookmarks = """
-                # DirectoryBookmarks %s (https://github.com/pponec/DirectoryBookmarks)
+                # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 bin	/test/dev	# My comment
                 """.formatted(instance.appVersion);
         assertEquals(bookmarks, ctx.bookmarks());
@@ -34,7 +38,7 @@ public class DirectoryBookmarksTest {
 
         instance.mainRun(array("save", "/test/conf", "conf"));
         bookmarks = """
-                # DirectoryBookmarks %s (https://github.com/pponec/DirectoryBookmarks)
+                # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 conf	/test/conf
                 bin	/test/dev	# My comment
                 """.formatted(instance.appVersion);
@@ -43,7 +47,7 @@ public class DirectoryBookmarksTest {
 
         instance.mainRun(array("save", "/test/bin", "bin"));
         bookmarks = """
-                # DirectoryBookmarks %s (https://github.com/pponec/DirectoryBookmarks)
+                # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 bin	/test/bin
                 conf	/test/conf
                 """.formatted(instance.appVersion);
@@ -70,12 +74,26 @@ public class DirectoryBookmarksTest {
         instance.mainRun(array("version"));
         assertEquals(instance.appVersion + "\n", ctx.getOut());
 
-        // DELETE ONE BOOKMARK:
-        instance.mainRun(array("save", "", "conf"));
+        instance.mainRun(array("delete", "conf"));
         instance.mainRun(array("list"));
         bookmarks = "bin	/test/bin\n";
         assertEquals(bookmarks, ctx.getOut());
         assertEquals("", ctx.getErr());
+    }
+
+    /** An integration tests check available URLs */
+    @Test
+    void checkUrls() throws IOException {
+        var ctx = DirBookContext.of();
+        var homeUrl = new URL(ctx.instance.homePage);
+        var sourceUrl = new URL(ctx.instance.sourceUrl);
+
+        for (var url : List.of(homeUrl, sourceUrl)) {
+            var connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            var responseCode = connection.getResponseCode();
+            assertEquals(200, responseCode, url.toString());
+        }
     }
 
     private DirectoryBookmarks.Array<String> array(String... args) {

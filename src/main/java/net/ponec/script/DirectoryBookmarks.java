@@ -21,9 +21,9 @@ import java.util.stream.Stream;
 public final class DirectoryBookmarks {
     static final String USER_HOME = System.getProperty("user.home");
 
-    final String homePage = "https://github.com/pponec/DirectoryBookmarks";
+    final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "1.9.5";
+    final String appVersion = "1.9.6";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
@@ -95,6 +95,10 @@ public final class DirectoryBookmarks {
                 var msg = args.subArray(3);
                 save(args.getItem(1), args.getItem(2), msg); // (dir, key, comments)
             }
+            case "d", "delete" -> {
+                if (args.size() < 2) printHelpAndExit(-1);
+                save("", args.getItem(1), Array.of()); // (emptyDir, key, comments)
+            }
             case "r", "read" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
                 removeBookmark(args.getItem(1));
@@ -144,7 +148,7 @@ public final class DirectoryBookmarks {
                 appName,
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [lgsrbfuc] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s [lgsdrbfuc] bookmark directory optionalComment%n", javaExe);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
             out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
@@ -160,7 +164,7 @@ public final class DirectoryBookmarks {
      */
     private void exit(int status, String... messageLines) {
         final var msg = String.join(newLine, messageLines);
-        if (exitByException && status < 0) {
+        if (exitByException && status != 0) {
             throw new UnsupportedOperationException(msg);
         } else {
             final var output = status >= 0 ? this.out : this.err;
