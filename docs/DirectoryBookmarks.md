@@ -1,5 +1,7 @@
 # DirectoryBookmarks.java
 
+https://github.com/pponec/PPScriptsForJava/assets/5459216/c7df34c4-c572-43f0-a247-2b27074ff7f5
+
 Do you often switch between different directories of the file system in the character terminal? 
 Then you might find the application described in this project useful.
 How does it work? 
