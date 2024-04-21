@@ -23,7 +23,7 @@ public final class DirectoryBookmarks {
 
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "1.9.6";
+    final String appVersion = "1.9.7";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
@@ -148,7 +148,7 @@ public final class DirectoryBookmarks {
                 appName,
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [lgsdrbfuc] bookmark directory optionalComment%n", javaExe);
+        out.printf("Usage: %s [slgdrbfuc] directory bookmark optionalComment%n", javaExe);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
             out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
