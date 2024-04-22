@@ -1,6 +1,6 @@
 # Multiplatform Directory Bookmarks
 
-<video src="https://github.com/pponec/PPScriptsForJava/assets/5459216/c7df34c4-c572-43f0-a247-2b27074ff7f5" controls="controls" style="max-width: 536px;">
+<video src="https://github.com/pponec/PPScriptsForJava/assets/5459216/c7df34c4-c572-43f0-a247-2b27074ff7f5" controls="controls" style="max-width: 400px;">
 </video>
 
 Do you often switch between different directories of the file system in the character terminal? 
