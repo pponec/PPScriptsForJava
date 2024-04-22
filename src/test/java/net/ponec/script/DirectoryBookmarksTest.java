@@ -86,7 +86,7 @@ public class DirectoryBookmarksTest {
     }
 
     @Test
-    void mainRunHomeTest() throws Exception {
+    void getHomeTest() throws Exception {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
         instance.mainRun(array("save", homeDir + "/test/bin", "bin", "My", "comment"));
@@ -113,7 +113,7 @@ public class DirectoryBookmarksTest {
     }
 
     @Test
-    void mainRunFixTest() throws Exception {
+    void fixTest() throws Exception {
         var random = new Random();
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
@@ -133,7 +133,7 @@ public class DirectoryBookmarksTest {
     }
 
     @Test
-    void mainGetAllBookmarksOfDirTest() throws Exception {
+    void bookmarksTest() throws Exception {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
         var myDir = "/temp/bin/local";
@@ -143,13 +143,25 @@ public class DirectoryBookmarksTest {
         instance.mainRun(array("save", myDir, "c"));
         instance.mainRun(array("save", homeDir, "home"));
 
-        try (var lines = ctx.bookmarkStream()) {
-            assertEquals(4, lines.count());
-        }
-
+        assertEquals(4, ctx.bookmarkStream().count());
         instance.mainRun(array("bookmarks", myDir));
         var output = ctx.getOutLines().collect(Collectors.joining(","));
         assertEquals("a,b,c", output);
+    }
+
+
+    @Test
+    void getSubdirTest() throws Exception {
+        var ctx = DirBookContext.of();
+        var instance = ctx.instance;
+        var myDir = "/temp/bin";
+
+        instance.mainRun(array("save", myDir, "bin"));
+        assertEquals(1, ctx.bookmarkStream().count());
+        instance.mainRun(array("list", "bin/subdirectory"));
+        var subdir = ctx.getOut();
+        var expected = "/temp/bin/subdirectory\n";
+        assertEquals(expected, subdir);
     }
 
     // =========== UTILS ===========
