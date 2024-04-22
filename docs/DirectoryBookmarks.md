@@ -11,6 +11,12 @@ Multiple bookmarks can be assigned to a single directory.
 Used bookmark names can be recycled: when the same bookmark is saved again, the original entry is silently overwritten. 
 Bookmarks are case-sensitive and are saved in CSV text format (tab delimiter) in the user's home directory named `.directory-bookmarks.csv`, so they can be easily edited with a regular text editor. 
 A typical reason for editing might be to change the directory structure, but the file can also be useful when transferring a project to another computer.
+The following environments are supported:
+
+* [Windows PowerShell](https://en.wikipedia.org/wiki/PowerShell)
+* [Windows Command Prompt](https://en.wikipedia.org/wiki/Cmd.exe)
+* [Bash](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) (Unix shell)
+* [Git BASH for Windows](https://gitforwindows.org/#bash)
 
 The original implementation was created 30 years ago (sometime during 1993) - as a Unix C-shell script. 
 After switching to Linux, I modified the script slightly for Bash and have used it in that form until now, practically every working day. 
