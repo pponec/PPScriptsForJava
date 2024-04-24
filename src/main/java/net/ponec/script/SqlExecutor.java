@@ -125,7 +125,7 @@ public final class SqlExecutor {
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.0.7
+     * @version 1.0.8
      */
     static class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
@@ -193,10 +193,6 @@ public final class SqlExecutor {
 
         public <R> Stream<R> streamMap(SqlFunction<ResultSet, ? extends R> mapper ) {
             return stream().map(mapper);
-        }
-
-        public Connection getConnection() {
-            return dbConnection;
         }
 
         /** The method closes a PreparedStatement object with related objects, not the database connection. */
