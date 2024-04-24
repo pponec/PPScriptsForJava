@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.0.9";
+    private final String appVersion = "1.1.0";
 
     private final Class<?> mainClass = getClass();
 
@@ -66,7 +66,7 @@ public final class PPUtils {
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
-    private static final String grepSeparator = ":";
+    private static final String grepSeparator = ":: ";
 
     private static final boolean sortDirectoryLast = true;
 
@@ -234,7 +234,7 @@ public final class PPUtils {
                     .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find())
             ) {
                 if (printLine) {
-                    validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
+                    validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line.trim()));
                     return false;
                 } else {
                     return validLineStream.findFirst().isPresent();
