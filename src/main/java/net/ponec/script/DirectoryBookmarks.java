@@ -23,7 +23,7 @@ public final class DirectoryBookmarks {
 
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "1.9.7";
+    final String appVersion = "1.9.8";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
