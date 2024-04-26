@@ -155,12 +155,17 @@ public class DirectoryBookmarksTest {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
         var myDir = "/temp/bin";
-
         instance.mainRun(array("save", myDir, "bin"));
         assertEquals(1, ctx.bookmarkStream().count());
-        instance.mainRun(array("list", "bin/subdirectory"));
+
+        instance.mainRun(array("list", "bin/subdirectory/abc"));
         var subdir = ctx.getOut();
-        var expected = "/temp/bin/subdirectory\n";
+        var expected = "/temp/bin/subdirectory/abc\n";
+        assertEquals(expected, subdir);
+
+        instance.mainRun(array("list", "bin\\subdirectory\\abc"));
+        subdir = ctx.getOut();
+        expected = "/temp/bin\\subdirectory\\abc\n";
         assertEquals(expected, subdir);
     }
 

@@ -24,7 +24,7 @@ public final class SqlExecutor {
 
     public static void main(final String[] args) throws Exception {
         System.out.println("Arguments: " + List.of(args));
-        try (Connection dbConnection = db.connection()) {
+        try (var dbConnection = db.connection()) {
             new SqlExecutor().mainStart(dbConnection);
         }
     }

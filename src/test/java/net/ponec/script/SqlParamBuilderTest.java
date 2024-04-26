@@ -37,7 +37,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
 
     @Test
     public void testShowUsage() throws Exception {
-        try (Connection dbConnection = createDbConnection())  {
+        try (var dbConnection = createDbConnection())  {
             runSqlStatementTest(dbConnection);
             toStringTest(dbConnection);
         }
@@ -46,7 +46,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
     /** Example of SQL statement INSERT. */
     public void runSqlStatementTest(Connection dbConnection) throws SQLException {
 
-        try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
+        try (var builder = new SqlParamBuilder(dbConnection)) {
             System.out.println("CREATE TABLE");
             builder.sql("CREATE TABLE employee",
                             "( id INTEGER PRIMARY KEY",
@@ -126,7 +126,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
     }
 
     public void toStringTest(Connection dbConnection) {
-        try (SqlParamBuilder builder = new SqlParamBuilder(dbConnection)) {
+        try (var builder = new SqlParamBuilder(dbConnection)) {
 
             System.out.println("MISSING PARAMS");
             builder.sql("SELECT t.id, t.name",

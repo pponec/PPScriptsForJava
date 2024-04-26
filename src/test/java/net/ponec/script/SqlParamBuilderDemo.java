@@ -40,7 +40,7 @@ public class SqlParamBuilderDemo extends AbstractJdbcConnector {
 
     @Test
     public void testShowUsage() throws Exception {
-        try (Connection dbConnection = createDbConnection())  {
+        try (var dbConnection = createDbConnection())  {
             runSqlStatements(dbConnection);
             runJdbcStatements(dbConnection);
         }
