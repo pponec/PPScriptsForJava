@@ -175,7 +175,7 @@ public final class DirectoryBookmarks {
 
     private void printDirectories() throws IOException {
         var storeFile = createStoreFile();
-        try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
+        try (var reader = new BufferedReader(new FileReader(storeFile))) {
             reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
@@ -197,10 +197,10 @@ public final class DirectoryBookmarks {
             case homeDirMark:
                 return USER_HOME;
             default:
-                var idx = key.indexOf(dirSeparator);
+                var idx = Math.max(key.indexOf('/'), key.indexOf('\\'));
                 var extKey = (idx >= 0 ? key.substring(0, idx) : key) + cellSeparator;
                 var storeFile = createStoreFile();
-                try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
+                try (var reader = new BufferedReader(new FileReader(storeFile))) {
                     var dir = reader.lines()
                             .filter(line -> !line.startsWith(String.valueOf(comment)))
                             .filter(line -> line.startsWith(extKey))
@@ -210,7 +210,7 @@ public final class DirectoryBookmarks {
                         var dirString = dir.get();
                         var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
                         var commentMatcher = commentPattern.matcher(dirString);
-                        var endDir = idx >= 0 ? dirSeparator + key.substring(idx + 1) : "";
+                        var endDir = idx >= 0 ? key.substring(idx) : "";
                         var result = (commentMatcher.find()
                                 ? dirString.substring(0, commentMatcher.start())
                                 : dirString)
@@ -238,7 +238,7 @@ public final class DirectoryBookmarks {
         var extendedKey = key + cellSeparator;
         var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
+        try (var writer = new BufferedWriter(new FileWriter(tempFile))) {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
                 // Function `isSystemMsWindows()` is required due a GitBash
@@ -251,7 +251,7 @@ public final class DirectoryBookmarks {
                 }
                 writer.append(newLine);
             }
-            try (BufferedReader reader = new BufferedReader(new FileReader(storeFile))) {
+            try (var reader = new BufferedReader(new FileReader(storeFile))) {
                 reader.lines()
                         .filter(line -> !line.startsWith(String.valueOf(comment)))
                         .filter(line -> !line.startsWith(extendedKey))
@@ -303,7 +303,7 @@ public final class DirectoryBookmarks {
 
     private List<String> getAllSortedKeys() throws IOException {
         var result = Collections.<String>emptyList();
-        try (BufferedReader reader = new BufferedReader(new FileReader(createStoreFile()))) {
+        try (var reader = new BufferedReader(new FileReader(createStoreFile()))) {
             result = reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
@@ -324,7 +324,7 @@ public final class DirectoryBookmarks {
     /** Read version from the external script. */
     private String getScriptVersion() {
         final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
-        try (BufferedReader reader = new BufferedReader(new FileReader(utils.getSrcPath()))) {
+        try (var reader = new BufferedReader(new FileReader(utils.getSrcPath()))) {
             return reader.lines()
                     .map(line ->  {
                         final var matcher = pattern.matcher(line);
