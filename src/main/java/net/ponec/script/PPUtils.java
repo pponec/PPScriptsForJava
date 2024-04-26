@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.1.0";
+    private final String appVersion = "1.1.1";
 
     private final Class<?> mainClass = getClass();
 
