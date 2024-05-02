@@ -28,21 +28,7 @@ public final class Archive {
               , new File("temp/message.txt", "KSQEAF+MEGQ==)
       ).skip(1).forEach(file -> write(file));
    }
-   static void write(File file) {
-      try {
-         var path = Path.of(file.path);
-         if (path.getParent() != null) Files.createDirectories(path.getParent());
-         var base64is = new Base64InputStream(file.base64Body);
-         var is = new InflaterInputStream(Base64.getDecoder().wrap(base64is), new Inflater());
-         try (var os = new PrintStream(Files.newOutputStream(path))) { is.transferTo(os); }
-         System.out.println("Restored: " + path);
-      } catch (IOException e) {
-         throw new IllegalArgumentException("Failed to extract file: " + file.path, e);
-      }
-   }
-   record File(String path, String... base64Body) {}
-   static final class Base64InputStream extends InputStream { … }
-}
+   static void write(File file) {…}
 ```
 
 For more information see a source code: [PPUtils.java](../src/main/java/net/ponec/script/PPUtils.java) .
