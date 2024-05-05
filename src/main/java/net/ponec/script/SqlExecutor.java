@@ -246,10 +246,6 @@ public final class SqlExecutor {
             return result.toString();
         }
 
-        public String sqlTemplate() {
-            return sqlTemplate;
-        }
-
         @Override
         public String toString() {
             return buildSql(new ArrayList<>(), true);
