@@ -134,7 +134,7 @@ class SqlExecutorKt {
     internal class SqlParamBuilderKt(private val connection: Connection) : AutoCloseable {
         private val params: MutableMap<String, Array<out Any?>> = HashMap()
         private val sqlParameterMark = Pattern.compile(":(\\w+)")
-        private var sqlTemplate: String = ""; private set
+        var sqlTemplate: String = ""; private set
         private var preparedStatement: PreparedStatement? = null
 
         /** Close statement (if any) and set the new SQL template  */

@@ -154,7 +154,7 @@ public final class PPUtils {
     private Comparator<Path> pathComparator() {
         return sortDirectoryLast
                 ? new DirLastComparator()
-                : Comparator.<Path>naturalOrder();
+                : Comparator.naturalOrder();
     }
 
     private String currentDate(String format) {
@@ -277,8 +277,7 @@ public final class PPUtils {
         public void build(String archiveFile, List<String> files) throws IOException {
             build(Path.of(archiveFile), files.stream().map(f ->
                     Path.of(f)).collect(Collectors.toUnmodifiableSet()));
-            System.out.println("%s.%s: archive created: %s"
-                    .formatted(PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile));
+            System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
         }
         public void build(Path javaArchiveFile, Set<Path> files) throws IOException {
             validate(javaArchiveFile, files);
@@ -364,7 +363,7 @@ public final class PPUtils {
             if (files.isEmpty()) {
                 throw new IllegalArgumentException("No file to archive as found");
             }
-            files.stream().forEach(file -> {
+            files.forEach(file -> {
                 if (!Files.isRegularFile(file) || !Files.isReadable(file))  {
                     throw new IllegalArgumentException("The file was not found" + file);
                 }

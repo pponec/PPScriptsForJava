@@ -60,7 +60,7 @@ public class Mp3PlayerGenerator {
         var files = new FinderUtilitiy(filePattern, new PathComparator())
                 .findFiles(Path.of(""))
                 .getFileCollector();
-        Collections.sort(files, new PathComparator());
+        files.sort(new PathComparator());
         return files;
     }
 
