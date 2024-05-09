@@ -7,6 +7,9 @@
  */
 package net.ponec.script;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -18,14 +21,14 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /** Use SQL statements by the SqlParamBuilder class. */
-public final class SqlExecutor {
+public final class SqlExecutor4EmbededDriver {
     private final static ConnectionProvider db = ConnectionProvider.forH2("user", "pwd");
     private final static LocalDate someDate = LocalDate.parse("2020-09-24");
 
     public static void main(final String[] args) throws Exception {
         System.out.println("Arguments: " + List.of(args));
-        try (var dbConnection = db.connection()) {
-            new SqlExecutor().mainStart(dbConnection);
+        try (var dbConnection = db.connection(jdbcDriver())) {
+            new SqlExecutor4EmbededDriver().mainStart(dbConnection);
         }
     }
 
@@ -94,13 +97,33 @@ public final class SqlExecutor {
         }
     }
 
+    private static byte[] jdbcDriver() throws Exception {
+        var h2Version="2.2.224";
+        var driver="%s/.m2/repository/com/h2database/h2/%s/h2-%s.jar"
+                .formatted(System.getProperty("user.home"), h2Version, h2Version);
+        var jdbcDriver = Path.of(driver);
+        return Files.readAllBytes(jdbcDriver);
+    }
+
+
     record Employee (int id, String name, LocalDate created) {}
+    record File(String path, String... base64Body) {}
 
     record ConnectionProvider(String jdbcClass, String jdbcUrl, String user, String passwd) {
 
-        Connection connection() throws SQLException {
+        Connection connection(byte[] driver) throws SQLException {
             try {
-                Class.forName(jdbcClass);
+                if (driver != null ) {
+                    var classLoader = new ClassLoader() {
+                        @Override
+                        public Class<?> findClass(String name) {
+                            return defineClass(name, driver, 0, driver.length);
+                        }
+                    };
+                    Class.forName(jdbcClass, true, classLoader);
+                } else {
+                    Class.forName(jdbcClass);
+                }
                 return DriverManager.getConnection(jdbcUrl, user, passwd);
             } catch (ClassNotFoundException ex) {
                 throw new SQLException("Driver class not found: " + jdbcClass, ex);
@@ -120,19 +143,41 @@ public final class SqlExecutor {
         }
     }
 
+    static final class Base64InputStream extends InputStream {
+        private final StringReader[] readers;
+        private final byte[] oneByte = new byte[1];
+        private char[] buffer = new char[0];
+        private int idx;
+        public Base64InputStream(String... body) {
+            this.readers = Arrays.stream(body).map(r -> new StringReader(r)).toArray(StringReader[]::new);
+        }
+        @Override public int read(final byte[] b, final int off, final int len) throws IOException {
+            if (buffer.length < len) { buffer = new char[len]; }
+            final var result = readers[idx].read(buffer, off, len);
+            for (int i = 0; i < result; i++) { b[i] = (byte) buffer[i]; }
+            return (result >= 0 || ++idx == readers.length) ? result : read(b, off, len);
+        }
+        @Override public int read() throws IOException {
+            final var result = read(oneByte, 0, 1);
+            return result < 0 ? result : oneByte[0];
+        }
+        @Override public void close() { Stream.of(readers).forEach(r -> r.close()); }
+        @Override public long skip(long n) throws IOException { throw new UnsupportedEncodingException(); }
+    }
+
     /**
      * Less than 170 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.0.9
+     * @version 1.0.8
      */
     static class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
         private final Map<String, Object[]> params = new HashMap<>();
-        protected String sqlTemplate = "";
+        private String sqlTemplate = "";
         private PreparedStatement preparedStatement = null;
 
         public SqlParamBuilder(Connection dbConnection) {
@@ -244,6 +289,10 @@ public final class SqlExecutor {
             }
             matcher.appendTail(result);
             return result.toString();
+        }
+
+        public String sqlTemplate() {
+            return sqlTemplate;
         }
 
         @Override

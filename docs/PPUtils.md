@@ -25,7 +25,7 @@ public final class Archive {
    public static void main(String[] args) {
       Stream.of(null
               , new File("temp/test.txt", "eJzzSMzJyVcIzy/KSQEAF+MEGQ==")
-              , new File("temp/message.txt", "KSQEAF+MEGQ==")
+              , new File("temp/message.txt", "eJwLL8osSVXIz0tO1VEoKs1TSMyrLM9ILUpV0NVVCAbyfTOTi/KLK4tLUnOLuQBvohAB")
       ).skip(1).forEach(file -> write(file));
    }
    static void write(File file) {…}

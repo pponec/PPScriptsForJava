@@ -134,7 +134,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                     "WHERE t.id > :id",
                     "  AND t.code = :code",
                     "ORDER BY t.id");
-            Assertions.assertEquals(builder.sqlTemplate(), builder.toString());
+            Assertions.assertEquals(builder.sqlTemplate, builder.toString());
 
             IllegalArgumentException ex = Assertions.assertThrows(IllegalArgumentException.class, () -> {
                 var count = builder.streamMap(t -> t).count();

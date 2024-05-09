@@ -98,7 +98,7 @@ class ArrayTest {
 
     @Test
     void stream() {
-        List<Character> list = array.stream().collect(Collectors.toList());
+        List<Character> list = array.stream().toList();
 
         assertEquals(array.getItem(0), list.get(0));
         assertEquals(array.getItem(1), list.get(1));

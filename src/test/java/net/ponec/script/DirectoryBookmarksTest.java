@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class DirectoryBookmarksTest {
 
-    private static final String homeDir = DirectoryBookmarks.USER_HOME.toString();
+    private static final String homeDir = DirectoryBookmarks.USER_HOME;
     private static final Charset charset = StandardCharsets.UTF_8;
 
     @Test
