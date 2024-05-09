@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.1.1";
+    private final String appVersion = "1.1.2";
 
     private final Class<?> mainClass = getClass();
 
@@ -78,24 +78,25 @@ public final class PPUtils {
     }
 
     public static void main(final String[] args) throws Exception {
-        new PPUtils(System.out).start(Array.of(args));
+        new PPUtils(System.out).mainRun(Array.of(args));
     }
 
-    void start(Array<String> args) throws Exception {
+    void mainRun(Array<String> args) throws Exception {
         final var enforcedLinux = args.getFirst().orElse("").equals("linux");
         if (enforcedLinux) {
             args = args.removeFirst();
         }
         var statement = args.getFirst().orElse("");
         switch (statement) {
-            case "find" -> { // Example: find [--print] public.+interface java$
+            case "find" -> { // Example: find [--printfileonly] public.+interface java$
                 final var file = args.get(1).map(Path::of).get();
-                final var printLine = args.get(2).orElse("").equals("--print");
-                final var subArgs = args.subArray(2 + (printLine ? 1 : 0 ));
+                final var fileOnly = args.get(2).orElse("").equals("--printfileonly");
+                final var subArgs = args.subArray(2 + (fileOnly ? 1 : 0 ));
                 final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
-                final var filePattern = subArgs.get(-1).map(Pattern::compile).orElse(null);
+                final var filePattern = subArgs.get(-1).map(Pattern::compile).orElseThrow(() ->
+                        new IllegalArgumentException("No file pattern"));
                 new FinderUtilitiy(pathComparator(), bodyPattern, filePattern, enforcedLinux, out)
-                        .findFiles(file, printLine && bodyPattern != null);
+                        .findFiles(file, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 3) {
