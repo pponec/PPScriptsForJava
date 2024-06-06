@@ -7,6 +7,8 @@
  */
 package net.ponec.script;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -18,65 +20,27 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /** Use SQL statements by the SqlParamBuilder class. */
-public final class SqlExecutor {
+public final class SqlFileExecutor {
     private final static ConnectionProvider db = ConnectionProvider.forH2("user", "pwd");
     private final static LocalDate someDate = LocalDate.parse("2020-09-24");
 
     public static void main(final String[] args) throws Exception {
         System.out.println("Arguments: " + List.of(args));
         try (var dbConnection = db.connection()) {
-            new SqlExecutor().mainStart(dbConnection);
+            new SqlFileExecutor().mainStart(dbConnection);
         }
     }
 
     void mainStart(Connection dbConnection) throws Exception {
         try (var builder = new SqlParamBuilder(dbConnection)) {
-            System.out.println("# CREATE TABLE");
-            builder.sql("""
-                            CREATE TABLE employee
-                            ( id INTEGER PRIMARY KEY
-                            , name VARCHAR(256) DEFAULT 'test'
-                            , code VARCHAR(1)
-                            , created DATE NOT NULL )
-                            """)
-                    .execute();
-
-            System.out.println("# SINGLE INSERT");
-            builder.sql("""
-                            INSERT INTO employee
-                            ( id, code, created ) VALUES
-                            ( :id, :code, :created )
-                            """)
+            builder.sql(Files.readString(Path.of("insert.sql")))
                     .bind("id", 1)
                     .bind("code", "T")
                     .bind("created", someDate)
                     .execute();
 
-            System.out.println("# MULTI INSERT");
-            builder.sql("""
-                            INSERT INTO employee
-                            (id,code,created) VALUES
-                            (:id1,:code,:created),
-                            (:id2,:code,:created)
-                            """)
-                    .bind("id1", 2)
-                    .bind("id2", 3)
-                    .bind("code", "T")
-                    .bind("created", someDate.plusDays(7))
-                    .execute();
-            builder.bind("id1", 11)
-                    .bind("id2", 12)
-                    .bind("code", "V")
-                    .execute();
-
-            System.out.println("# SELECT");
-            List<Employee> employees = builder.sql("""
-                            SELECT t.id, t.name, t.created
-                            FROM employee t
-                            WHERE t.id < :id
-                              AND t.code IN (:code)
-                            ORDER BY t.id
-                            """)
+            List<Employee> employees = builder
+                    .sql(Files.readString(Path.of("select.sql")))
                     .bind("id", 10)
                     .bind("code", "T", "V")
                     .streamMap(rs -> new Employee(
@@ -84,17 +48,11 @@ public final class SqlExecutor {
                             rs.getString("name"),
                             rs.getObject("created", LocalDate.class)))
                     .toList();
-
-            System.out.println("# PRINT RESULT OF: " + builder.toStringLine());
-            employees.forEach(employee -> System.out.println(employee));
-            assertEquals(3, employees.size());
-            assertEquals(1, employees.get(0).id);
-            assertEquals("test", employees.get(0).name);
-            assertEquals(someDate, employees.get(0).created);
         }
     }
 
     record Employee (int id, String name, LocalDate created) {}
+    //static class SqlParamBuilder {…}//static class SqlParamBuilder {…}
 
     record ConnectionProvider(String jdbcClass, String jdbcUrl, String user, String passwd) {
 
@@ -231,7 +189,7 @@ public final class SqlExecutor {
                     matcher.appendReplacement(result, "");
                     for (int i = 0; i < values.length; i++) {
                         if (i > 0) result.append(',');
-                        result.append(toLog ? "[" + values[i] + "]" : "?");
+                        result.append(Matcher.quoteReplacement(toLog ? "[" + values[i] + "]" : "?"));
                         sqlValues.add(values[i]);
                     }
                 } else {

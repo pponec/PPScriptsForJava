@@ -18,6 +18,8 @@ package net.ponec.script;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.awt.*;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
@@ -39,7 +41,8 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
     public void testShowUsage() throws Exception {
         try (var dbConnection = createDbConnection())  {
             runSqlStatementTest(dbConnection);
-            toStringTest(dbConnection);
+            toStringTest_1(dbConnection);
+            toStringTest_2(dbConnection);
         }
     }
 
@@ -125,7 +128,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
         }
     }
 
-    public void toStringTest(Connection dbConnection) {
+    public void toStringTest_1(Connection dbConnection) {
         try (var builder = new SqlParamBuilder(dbConnection)) {
 
             System.out.println("MISSING PARAMS");
@@ -151,6 +154,28 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                       AND t.code = [w]
                     ORDER BY t.id""".stripIndent();
             assertEquals(expected, builder.toString());
+        }
+    }
+
+
+    public void toStringTest_2(Connection dbConnection) {
+        try (var builder = new SqlParamBuilder(dbConnection)) {
+            var log = builder.sql("""
+                            SELECT t.id, t.name
+                            FROM employee t
+                            WHERE t.name = 'a:\\{b}\\(c)'
+                              AND t.code = :code
+                              """)
+                    .bind("code", "x:\\{y}\\(z)")
+                    .toString();
+
+            var expected = """
+                    SELECT t.id, t.name
+                    FROM employee t
+                    WHERE t.name = 'a:\\{b}\\(c)'
+                      AND t.code = [x:\\{y}\\(z)]
+                    """;
+            assertEquals(expected, log);
         }
     }
 
