@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.1.2";
+    private final String appVersion = "1.2.0";
 
     private final Class<?> mainClass = getClass();
 
@@ -132,8 +132,9 @@ public final class PPUtils {
                 final var json = Files.readString(Path.of(args.get(2).orElse("?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
-            case "sa", "scriptArchive" -> {
-                new ScriptArchiveBuilder().build(args.get(1).orElse("Archive.java"), args.subArray(2).toList());
+            case "sa", "scriptArchive", "archive" -> {
+                new ScriptArchiveBuilder().build(args.get(1)
+                        .orElse("Archive.java"), args.subArray(2));
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -152,7 +153,7 @@ public final class PPUtils {
         }
     }
 
-    private Comparator<Path> pathComparator() {
+    static Comparator<Path> pathComparator() {
         return sortDirectoryLast
                 ? new DirLastComparator()
                 : Comparator.naturalOrder();
@@ -275,9 +276,19 @@ public final class PPUtils {
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
-        public void build(String archiveFile, List<String> files) throws IOException {
-            build(Path.of(archiveFile), files.stream().map(f ->
-                    Path.of(f)).collect(Collectors.toUnmodifiableSet()));
+        public void build(String archiveFile, Array<String> files) throws IOException {
+            final var dir = files.getFirst().map(f -> Path.of(f));
+            if (dir.map(f -> Files.isDirectory(f)).orElse(false)) {
+                try (var fileStream = Files.list(dir.get())) {
+                    final var dirFiles = fileStream.filter(Files::isReadable)
+                            .filter(file -> !Files.isDirectory(file))
+                            .collect(Collectors.toUnmodifiableSet());
+                    build(Path.of(archiveFile), dirFiles);
+                }
+            } else {
+                build(Path.of(archiveFile), files.stream().map(f ->
+                        Path.of(f)).collect(Collectors.toUnmodifiableSet()));
+            }
             System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
         }
         public void build(Path javaArchiveFile, Set<Path> files) throws IOException {

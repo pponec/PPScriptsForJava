@@ -16,6 +16,7 @@ Services called from the command line for general use.
 - `PPUtils key json ` - get a value by the (composite) key, for example: `"a.b.c"`
 - `PPUtils scriptArchive Archive.java File1 File2 File3` - Creates a self-extracting archive to a Java 17 script format.
    File contents are compressed and converted using Base64.
+   Optionally, you can put a __single directory__ to the parameter from which all files will be loaded.
    Using the tool is optimal for archiving text files, but in principle it also works for binary files.
    The total size of the **binary** data to be archived should not exceed `300 MB`, otherwise you may run into Java language limits at the time of extracting the archive.
    To extract archive files, type the expression in the console: `java Archive.java`, to extract large archives, use rather the: `java -Xmx4g Archive.java` .
