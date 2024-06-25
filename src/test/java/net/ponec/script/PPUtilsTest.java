@@ -150,8 +150,8 @@ class PPUtilsTest {
         var statement = "grepf";
         var line = "a-hello-world-c";
         var pattern = "a-(.*)-(.*)-c";
-        var formatter = "a: %s, b: %s";
-        var expected = ".temp:: a: hello, b: world";
+        var formatter = "a:%s, b:%s";
+        var expected = "temp:: a:hello, b:world";
         var file = Files.createTempFile("test", ".temp");
         var charset = StandardCharsets.UTF_8;
 
@@ -167,7 +167,6 @@ class PPUtilsTest {
         result = result.substring(result.length() - expected.length());
         assertEquals(expected, result);
     }
-
 
     private static void deleteFile(Path f) {
         try {
