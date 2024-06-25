@@ -5,7 +5,10 @@ Services called from the command line for general use.
 ## Tools and examples of use
 
 - `PPUtils find [regExpContent] regExpFile` - find readable files by regular expressions, partial compliance is assessed,
-- `PPUtils grep regExpContent regExpFile` - find readable file rows by a regular expression.
+- `PPUtils grep regExpContent regExpFiles` - find readable file rows by a regular expression.
+- `PPUtils grepf regGroupContent formatter regExpFiles` - print formatted rows from the `grep` for a group regular expression. 
+   A template formats all regexp groups by the marks `%s`.
+   For example: `PPUtils grepf "a-(.*)-(.*)-c" "a:%s, b:%s" a.txt` returns `"a:hello, b:world"`in case, the file contains the row: `a-hello-world-c`.
 - `PPUtils date` - prints a date by ISO format, for example: "2023-12-31"
 - `PPUtils time` - prints hours and time, for example "2359"
 - `PPUtils datetime` - prints datetime format "2023-12-31T2359"

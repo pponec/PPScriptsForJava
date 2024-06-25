@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.0";
+    private final String appVersion = "1.2.1";
 
     private final Class<?> mainClass = getClass();
 
@@ -95,13 +95,21 @@ public final class PPUtils {
                 final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.get(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
-                new FinderUtilitiy(pathComparator(), bodyPattern, filePattern, enforcedLinux, out)
+                new FinderUtilitiy(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
                         .findFiles(file, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
+                if (args.size() > 2) {
+                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, "", null, enforcedLinux, out);
+                    args.stream().skip(2).forEach(file -> pathFinder.grep(Path.of(file), true));
+                }
+            }
+            case "grepf" -> {
                 if (args.size() > 3) {
-                    final var bodyPattern = args.get(2).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, null, enforcedLinux, out);
+                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var bodyFormat = args.get(2).orElse(""); // Pattern.CASE_INSENSITIVE);
+                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
                     args.stream().skip(3).forEach(file -> pathFinder.grep(Path.of(file), true));
                 }
             }
@@ -197,15 +205,18 @@ public final class PPUtils {
     static final class FinderUtilitiy {
         /** @Nullable */
         private final Pattern bodyPattern;
+        /** @NonNull */
+        private final String bodyFormat;
         /** @Nullable */
         private final Pattern filePattern;
         private final boolean enforcedLinux;
         private final PrintStream out;
         private final Comparator<Path> pathComparator;
 
-        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
+        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, String bodyFormat, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
             this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
+            this.bodyFormat = bodyFormat;
             this.filePattern = filePattern;
             this.enforcedLinux = enforcedLinux;
             this.out = out;
@@ -233,10 +244,12 @@ public final class PPUtils {
         public boolean grep(Path file, boolean printLine) {
             try (final var validLineStream = Files
                     .lines(file, StandardCharsets.UTF_8)
-                    .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find())
+                    .filter(line -> bodyPattern == null || bodyPattern.matcher(line).find())
             ) {
                 if (printLine) {
-                    validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line.trim()));
+                    validLineStream
+                            .map(line -> bodyFormat.isEmpty() ? line.trim() : formatGroupText(line))
+                            .forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
                     return false;
                 } else {
                     return validLineStream.findFirst().isPresent();
@@ -245,6 +258,19 @@ public final class PPUtils {
                 return false;
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            }
+        }
+
+        private String formatGroupText(String line) {
+            final var matcher = bodyPattern.matcher(line);
+            if (matcher.find()) {
+                var groups = new Object[matcher.groupCount()];
+                for (int i = 0; i < groups.length; i++) {
+                    groups[i] = matcher.group(i + 1);
+                }
+                return bodyFormat.formatted(groups);
+            } else {
+                return "";
             }
         }
 
