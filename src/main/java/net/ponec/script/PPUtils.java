@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.1.2";
+    private final String appVersion = "1.2.1";
 
     private final Class<?> mainClass = getClass();
 
@@ -95,13 +95,21 @@ public final class PPUtils {
                 final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.get(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
-                new FinderUtilitiy(pathComparator(), bodyPattern, filePattern, enforcedLinux, out)
+                new FinderUtilitiy(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
                         .findFiles(file, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
+                if (args.size() > 2) {
+                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, "", null, enforcedLinux, out);
+                    args.stream().skip(2).forEach(file -> pathFinder.grep(Path.of(file), true));
+                }
+            }
+            case "grepf" -> {
                 if (args.size() > 3) {
-                    final var bodyPattern = args.get(2).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, null, enforcedLinux, out);
+                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var bodyFormat = args.get(2).orElse(""); // Pattern.CASE_INSENSITIVE);
+                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
                     args.stream().skip(3).forEach(file -> pathFinder.grep(Path.of(file), true));
                 }
             }
@@ -132,8 +140,9 @@ public final class PPUtils {
                 final var json = Files.readString(Path.of(args.get(2).orElse("?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
-            case "sa", "scriptArchive" -> {
-                new ScriptArchiveBuilder().build(args.get(1).orElse("Archive.java"), args.subArray(2).toList());
+            case "sa", "scriptArchive", "archive" -> {
+                new ScriptArchiveBuilder().build(args.get(1)
+                        .orElse("Archive.java"), args.subArray(2));
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -152,7 +161,7 @@ public final class PPUtils {
         }
     }
 
-    private Comparator<Path> pathComparator() {
+    static Comparator<Path> pathComparator() {
         return sortDirectoryLast
                 ? new DirLastComparator()
                 : Comparator.naturalOrder();
@@ -196,15 +205,18 @@ public final class PPUtils {
     static final class FinderUtilitiy {
         /** @Nullable */
         private final Pattern bodyPattern;
+        /** @NonNull */
+        private final String bodyFormat;
         /** @Nullable */
         private final Pattern filePattern;
         private final boolean enforcedLinux;
         private final PrintStream out;
         private final Comparator<Path> pathComparator;
 
-        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
+        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, String bodyFormat, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
             this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
+            this.bodyFormat = bodyFormat;
             this.filePattern = filePattern;
             this.enforcedLinux = enforcedLinux;
             this.out = out;
@@ -232,10 +244,12 @@ public final class PPUtils {
         public boolean grep(Path file, boolean printLine) {
             try (final var validLineStream = Files
                     .lines(file, StandardCharsets.UTF_8)
-                    .filter(row -> bodyPattern == null || bodyPattern.matcher(row).find())
+                    .filter(line -> bodyPattern == null || bodyPattern.matcher(line).find())
             ) {
                 if (printLine) {
-                    validLineStream.forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line.trim()));
+                    validLineStream
+                            .map(line -> bodyFormat.isEmpty() ? line.trim() : formatGroupText(line))
+                            .forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
                     return false;
                 } else {
                     return validLineStream.findFirst().isPresent();
@@ -244,6 +258,19 @@ public final class PPUtils {
                 return false;
             } catch (IOException e) {
                 throw new RuntimeException(e);
+            }
+        }
+
+        private String formatGroupText(String line) {
+            final var matcher = bodyPattern.matcher(line);
+            if (matcher.find()) {
+                var groups = new Object[matcher.groupCount()];
+                for (int i = 0; i < groups.length; i++) {
+                    groups[i] = matcher.group(i + 1);
+                }
+                return bodyFormat.formatted(groups);
+            } else {
+                return "";
             }
         }
 
@@ -275,9 +302,19 @@ public final class PPUtils {
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
-        public void build(String archiveFile, List<String> files) throws IOException {
-            build(Path.of(archiveFile), files.stream().map(f ->
-                    Path.of(f)).collect(Collectors.toUnmodifiableSet()));
+        public void build(String archiveFile, Array<String> files) throws IOException {
+            final var dir = files.getFirst().map(f -> Path.of(f));
+            if (dir.map(f -> Files.isDirectory(f)).orElse(false)) {
+                try (var fileStream = Files.list(dir.get())) {
+                    final var dirFiles = fileStream.filter(Files::isReadable)
+                            .filter(file -> !Files.isDirectory(file))
+                            .collect(Collectors.toUnmodifiableSet());
+                    build(Path.of(archiveFile), dirFiles);
+                }
+            } else {
+                build(Path.of(archiveFile), files.stream().map(f ->
+                        Path.of(f)).collect(Collectors.toUnmodifiableSet()));
+            }
             System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
         }
         public void build(Path javaArchiveFile, Set<Path> files) throws IOException {
