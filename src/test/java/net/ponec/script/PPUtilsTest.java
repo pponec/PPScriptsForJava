@@ -6,13 +6,11 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -146,25 +144,49 @@ class PPUtilsTest {
     }
 
     @Test
-    void grepf() throws Exception {
+    void grepf_withFile() throws Exception {
         var statement = "grepf";
         var line = "a-hello-world-c";
         var pattern = "a-(.*)-(.*)-c";
-        var formatter = "a:%s, b:%s";
+        var formatter = "${file}:: a:%s, b:%s";
         var expected = "temp:: a:hello, b:world";
         var file = Files.createTempFile("test", ".temp");
         var charset = StandardCharsets.UTF_8;
+        var params = PPUtils.Array.of(statement, pattern, formatter, file.toAbsolutePath().toString());
 
         var out = new ByteArrayOutputStream();
         var printer = new PrintStream(out, true, charset);
         var ppUtils = new PPUtils(printer);
 
         Files.writeString(file, line, charset);
-        ppUtils.mainRun(PPUtils.Array.of(statement, pattern, formatter, file.toAbsolutePath().toString()));
+        ppUtils.mainRun(params);
         Files.delete(file);
 
         String result = out.toString(charset).trim();
         result = result.substring(result.length() - expected.length());
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void grepf_noFile() throws Exception {
+        var statement = "grepf";
+        var line = "a-hello-world-c";
+        var pattern = "a-(.*)-(.*)-c";
+        var formatter = "a:%s, b:%s";
+        var expected = "a:hello, b:world";
+        var file = Files.createTempFile("test", ".temp");
+        var charset = StandardCharsets.UTF_8;
+        var params = PPUtils.Array.of(statement, pattern, formatter, file.toAbsolutePath().toString());
+
+        var out = new ByteArrayOutputStream();
+        var printer = new PrintStream(out, true, charset);
+        var ppUtils = new PPUtils(printer);
+
+        Files.writeString(file, line, charset);
+        ppUtils.mainRun(params);
+        Files.delete(file);
+
+        var result = out.toString().trim();
         assertEquals(expected, result);
     }
 

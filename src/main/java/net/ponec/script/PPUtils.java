@@ -58,7 +58,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.1";
+    private final String appVersion = "1.2.2";
 
     private final Class<?> mainClass = getClass();
 
@@ -203,10 +203,13 @@ public final class PPUtils {
     }
 
     static final class FinderUtilitiy {
+        private static String FILE_PATTEN = "${file}";
         /** @Nullable */
         private final Pattern bodyPattern;
         /** @NonNull */
         private final String bodyFormat;
+        /** @NonNull */
+        private final boolean printFileName;
         /** @Nullable */
         private final Pattern filePattern;
         private final boolean enforcedLinux;
@@ -217,6 +220,7 @@ public final class PPUtils {
             this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
             this.bodyFormat = bodyFormat;
+            this.printFileName =  bodyFormat.contains(FILE_PATTEN);
             this.filePattern = filePattern;
             this.enforcedLinux = enforcedLinux;
             this.out = out;
@@ -235,7 +239,7 @@ public final class PPUtils {
                                 }
                             } else if ((filePattern == null || filePattern.matcher(file.toString()).find())
                                     && (bodyPattern == null || grep(file, printLine))) {
-                                printFileName(file).println();
+                                out.println(formatFileName(file));
                             }
                         });
             }
@@ -247,9 +251,16 @@ public final class PPUtils {
                     .filter(line -> bodyPattern == null || bodyPattern.matcher(line).find())
             ) {
                 if (printLine) {
-                    validLineStream
-                            .map(line -> bodyFormat.isEmpty() ? line.trim() : formatGroupText(line))
-                            .forEach(line -> printFileName(file).printf("%s%s%n", grepSeparator, line));
+                    validLineStream.forEach(line -> {
+                        if (bodyFormat.isEmpty()) {
+                            out.printf("%s%s%s%n", formatFileName(file), grepSeparator, line.trim());
+                        } else {
+                            var format = printFileName
+                                    ? bodyFormat.replace(FILE_PATTEN, formatFileName(file))
+                                    : bodyFormat;
+                            out.println(formatGroupText(line.trim(), format));
+                        }
+                    });
                     return false;
                 } else {
                     return validLineStream.findFirst().isPresent();
@@ -261,7 +272,7 @@ public final class PPUtils {
             }
         }
 
-        private String formatGroupText(String line) {
+        private String formatGroupText(String line, String bodyFormat) {
             final var matcher = bodyPattern.matcher(line);
             if (matcher.find()) {
                 var groups = new Object[matcher.groupCount()];
@@ -275,13 +286,10 @@ public final class PPUtils {
         }
 
         /** Method supports a GitBash shell. */
-        private PrintStream printFileName(Path path) {
-            if (enforcedLinux) {
-                out.print(path.toString().replace('\\', '/'));
-            } else {
-                out.print(path);
-            }
-            return out;
+        private String formatFileName(Path path) {
+            return enforcedLinux
+                    ? path.toString().replace('\\', '/')
+                    : path.toString();
         }
     }
 
