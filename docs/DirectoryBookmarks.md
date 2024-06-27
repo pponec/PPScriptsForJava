@@ -87,13 +87,14 @@ I have already found similar tools on the Internet, but they either did not meet
 
 ### For the Windows Command Prompt:
 
-1. `mkdir %USERPROFILE%\bin`
-2. `cd %USERPROFILE%\bin`
-3.  Move the file `DirectoryBookmarks.java` to the current directory.
-3. `java DirectoryBookmarks.java c`
-4.  Copy the file [init.bat](../windows/init.bat) to the directory `$HOME/bin`. 
-5.  Open `regedit` and follow the instructions in the file header.
-6.  Modify path to Java and optionally remove unnecessary auxiliary functions.
+1.  Enable PowerShell by statement: `Set-ExecutionPolicy unrestricted`
+2. `mkdir $HOME\bin`
+3. `cd $HOME\bin`
+4.  Move the file `DirectoryBookmarks.java` to the current directory.
+5. `java DirectoryBookmarks.java c`
+6.  Copy the file [init.bat](../windows/init.bat) to the directory `$HOME/bin`. 
+7.  Open `regedit` and follow the instructions in the file header.
+8.  Modify path to Java and optionally remove unnecessary auxiliary functions.
 
 ### For the Windows GitBash (Bash emulator):
 

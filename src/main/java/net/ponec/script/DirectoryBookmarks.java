@@ -1,5 +1,6 @@
 // Running by Java 17: $ java DirectoryBookmarks.java
 // Licence: Apache License, Version 2.0, https://github.com/pponec/
+// Enable PowerShell in Windows 11: Set-ExecutionPolicy unrestricted
 
 package net.ponec.script;
 
