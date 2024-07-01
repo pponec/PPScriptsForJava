@@ -40,17 +40,18 @@ import java.util.zip.DeflaterOutputStream;
 /**
  * Usage and examples:
  * <ul>
- *    <li>{@code java PPUtils find main.*String java$ } - find readable files by regular expressions. Partial compliance is assessed.</li>
- *    <li>{@code java PPUtils grep main.*String PPUtils.java } - find readable file rows by a regular expression.</li>
- *    <li>{@code java PPUtils date} - prints a date by ISO format, for example: "2023-12-31"</li>
- *    <li>{@code java PPUtils time} - prints hours and time, for example "2359"</li>
- *    <li>{@code java PPUtils datetime} - prints datetime format "2023-12-31T2359"</li>
- *    <li>{@code java PPUtils date-iso} - prints datetime by ISO format, eg: "2023-12-31T23:59:59.999"</li>
- *    <li>{@code java PPUtils date-format "yyyy-MM-dd'T'HH:mm:ss.SSS"} - prints a time by a custom format</li>
- *    <li>{@code java PPUtils base64encode "file.bin"} - encode any (binary) file.</li>
- *    <li>{@code java PPUtils base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
- *    <li>{@code java PPUtils key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
- *    <li>{@code java PPUtils scriptArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
+ *    <li>{@code java PPUtils.java find main.*String java$ } - find readable files by regular expressions. Partial compliance is assessed.</li>
+ *    <li>{@code java PPUtils.java grep main.*String PPUtils.java } - find readable file rows by a regular expression.</li>
+ *    <li>{@code java PPUtils.java grepf 'class\s(\w+)' 'class:%s of ${file}' PPUtils.java} - grep file by grouped regexp and print result by the template.</li>
+ *    <li>{@code java PPUtils.java date} - prints a date by ISO format, for example: "2023-12-31"</li>
+ *    <li>{@code java PPUtils.java time} - prints hours and time, for example "2359"</li>
+ *    <li>{@code java PPUtils.java datetime} - prints datetime format "2023-12-31T2359"</li>
+ *    <li>{@code java PPUtils.java date-iso} - prints datetime by ISO format, eg: "2023-12-31T23:59:59.999"</li>
+ *    <li>{@code java PPUtils.java date-format "yyyy-MM-dd'T'HH:mm:ss.SSS"} - prints a time by a custom format</li>
+ *    <li>{@code java PPUtils.java base64encode "file.bin"} - encode any (binary) file.</li>
+ *    <li>{@code java PPUtils.java base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
+ *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
+ *    <li>{@code java PPUtils.java scriptArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
  */
@@ -152,7 +153,7 @@ public final class PPUtils {
             }
             default -> {
                 out.printf("%s v%s: Use an one of the next commands:\nfind" +
-                        ", grep, date, time, datetime" +
+                        ", grep, grepf, date, time, datetime" +
                         ", date-iso, date-format" +
                         ", base64encode, base64decode, version %n"
                         , getClass().getSimpleName(), appVersion);
