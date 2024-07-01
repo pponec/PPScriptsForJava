@@ -51,7 +51,7 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils.java base64encode "file.bin"} - encode any (binary) file.</li>
  *    <li>{@code java PPUtils.java base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
  *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
- *    <li>{@code java PPUtils.java scriptArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
+ *    <li>{@code java PPUtils.java saveArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
  */
@@ -141,7 +141,7 @@ public final class PPUtils {
                 final var json = Files.readString(Path.of(args.get(2).orElse("?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
-            case "sa", "scriptArchive", "archive" -> {
+            case "sa", "saveArchive", "archive" -> {
                 new ScriptArchiveBuilder().build(args.get(1)
                         .orElse("Archive.java"), args.subArray(2));
             }
