@@ -1,3 +1,6 @@
+# Copy the file to: $HOME/Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1
+# and enable loading by statement: `Set-ExecutionPolicy unrestricted`
+
 # Shortcuts for DirectoryBookmarks v1.8.5 utilities - for the PowerShell:
 function directoryBookmarks { & "java" --limit-modules java.base,java.net.http,jdk.compiler,jdk.crypto.ec -jar "$HOME/bin/DirectoryBookmarks.jar" $args }
 function cdf { Set-Location -Path $(directoryBookmarks g $args) }
