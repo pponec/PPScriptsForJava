@@ -158,7 +158,8 @@ public final class PPUtils {
                 out.printf("%s v%s: Use an one of the next commands:\nfind" +
                         ", grep, grepf, date, time, datetime" +
                         ", date-iso, date-format" +
-                        ", base64encode, base64decode, version %n"
+                        ", base64encode, base64decode, version" +
+                        ", archive, archive1 %n"
                         , getClass().getSimpleName(), appVersion);
                 System.exit(1);
             }
