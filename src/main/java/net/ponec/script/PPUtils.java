@@ -51,7 +51,8 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils.java base64encode "file.bin"} - encode any (binary) file.</li>
  *    <li>{@code java PPUtils.java base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
  *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
- *    <li>{@code java PPUtils.java saveArchive Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
+ *    <li>{@code java PPUtils.java saveArchive  Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format.</li>
+ *    <li>{@code java PPUtils.java saveArchive1 Archive.java File1 File2 File3 } - Compress the archive to the one row</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
  */
@@ -59,7 +60,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.2";
+    private final String appVersion = "1.2.3";
 
     private final Class<?> mainClass = getClass();
 
@@ -142,8 +143,10 @@ public final class PPUtils {
                 out.println(Json.of(json).get(key).orElse(""));
             }
             case "sa", "saveArchive", "archive" -> {
-                new ScriptArchiveBuilder().build(args.get(1)
-                        .orElse("Archive.java"), args.subArray(2));
+                new ScriptArchiveBuilder(false).build(args.get(1).orElseThrow(), args.subArray(2));
+            }
+            case "sa1", "saveArchive1", "archive1" -> { // Compress the archive to the one row
+                new ScriptArchiveBuilder(true).build(args.get(1).orElseThrow(), args.subArray(2));
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -221,7 +224,7 @@ public final class PPUtils {
             this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
             this.bodyFormat = bodyFormat;
-            this.printFileName =  bodyFormat.contains(FILE_PATTEN);
+            this.printFileName = bodyFormat.contains(FILE_PATTEN);
             this.filePattern = filePattern;
             this.enforcedLinux = enforcedLinux;
             this.out = out;
@@ -307,9 +310,10 @@ public final class PPUtils {
             }
         }
     }
-
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
+        final boolean oneRowClass;
+        ScriptArchiveBuilder(boolean oneRowClass) { this.oneRowClass = oneRowClass; }
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
         public void build(String archiveFile, Array<String> files) throws IOException {
             final var dir = files.getFirst().map(f -> Path.of(f));
@@ -333,14 +337,14 @@ public final class PPUtils {
             var dotIndex = cFile.indexOf('.');
             if (dotIndex > 0) { cFile = cFile.substring(0, dotIndex); }
             var classBody = """
+                    /* Extract files by: java %s.java
+                     * Powered by the <a href="%s">PPUtils</a>.
+                     * @version %s */
                     import java.io.*;
                     import java.nio.file.*;
                     import java.util.*;
                     import java.util.zip.*;
                     import java.util.stream.Stream;
-                    /** Extract files by statement: java %s.java
-                     * Powered by the <a href="%s">PPUtils</a>.
-                     * @version %s */
                     public final class %s {
                         public static void main(String[] args) {
                             Stream.of(null %s
@@ -383,13 +387,12 @@ public final class PPUtils {
                     }
                     """.formatted(cFile, homeUrl, LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
-
             try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, StandardCharsets.UTF_8)) {
-                os.print(classBody[0]);
+                print(classBody[0], os);
                 for (var file : files) {
-                    os.print("\n\t\t, new File(\"");
-                    os.print(file.toString().replace('\\', '/'));
-                    os.print("\", \"");
+                    print("\n\t\t, new File(\"", os);
+                    print(file.toString().replace('\\', '/'), os);
+                    print("\", \"", os);
                     try (var fis = Files.newInputStream(file)) {
                         final var eos = new SplitOutputStream(os);
                         final var b64os = Base64.getEncoder().wrap(eos);
@@ -397,12 +400,23 @@ public final class PPUtils {
                             fis.transferTo(dos);
                         }
                     }
-                    os.print("\")");
+                    print("\")", os);
                 }
-                os.print(classBody[1]);
+                print(classBody[1], os);
             }
         }
-
+        public void print(String body, PrintStream out) {
+            if (oneRowClass) {
+                out.print(body.trim().replaceAll("\\s+", " ") // remove double spaces
+                        .replaceAll("/\\*.*\\*/ *", "")       // remove comment(s)
+                        .replaceAll(" (=+) ", "$1")
+                        .replaceAll("([{};]) ", "$1")
+                        .replace("private ", "")
+                        .replace("final ", ""));
+            } else {
+                out.print(body);
+            }
+        }
         public void validate(Path classFile, Collection<Path> files) {
             if (!classFile.getFileName().toString().endsWith(".java")) {
                 throw new IllegalArgumentException("The archive must be a Java file: " + classFile);
