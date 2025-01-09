@@ -53,6 +53,7 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils.java base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
  *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
  *    <li>{@code java PPUtils.java archive  Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
+ *    <li>{@code java PPUtils.java archive  Archive.java --files "FileList.txt" } - Creates a self-extracting archive for all files from the file list.</li>
  *    <li>{@code java PPUtils.java archive1 Archive.java File1 File2 File3 } - Compress the archive to the one row. . Recursive directories are supported.</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
@@ -61,7 +62,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.4";
+    private final String appVersion = "1.2.5";
 
     private final Class<?> mainClass = getClass();
 
@@ -318,9 +319,26 @@ public final class PPUtils {
         ScriptArchiveBuilder(boolean oneRowClass) { this.oneRowClass = oneRowClass; }
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
         public void build(String archiveFile, Array<String> files) throws IOException {
+            if ("--files".equals(files.getFirst().orElse("")) && files.size() == 2) {
+                files = readFiles(files.getItem(1));
+            }
             build(Path.of(archiveFile), findInnerFiles(files));
             System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
         }
+
+        private Array<String> readFiles(String files) {
+            try (Stream<String> lines = Files.lines(Path.of(files))) {
+                final var result = Array.of(lines.toArray(String[]::new));
+                result.stream()
+                        .filter(f -> !Files.isRegularFile(Path.of(f)))
+                        .findAny()
+                        .ifPresent(f -> { throw new IllegalArgumentException("File '%s' was not found.".formatted(f)); });
+                return result;
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
         public Set<Path> findInnerFiles(Array<String> items) {
             final var result = new TreeSet<Path>();
             items.stream()
