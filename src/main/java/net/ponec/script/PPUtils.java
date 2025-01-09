@@ -52,8 +52,8 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils.java base64encode "file.bin"} - encode any (binary) file.</li>
  *    <li>{@code java PPUtils.java base64decode "file.base64"} - decode base64 encoded file (result removes extension)</li>
  *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
- *    <li>{@code java PPUtils.java archive  Archive.java File1 File2 File3 } - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
- *    <li>{@code java PPUtils.java archive  Archive.java --files "FileList.txt" } - Creates a self-extracting archive for all files from the file list.</li>
+ *    <li>{@code java PPUtils.java archive  Archive.java File1 File2 Dir1 Dir2 } - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
+ *    <li>{@code java PPUtils.java archive  Archive.java --files FileList.txt } - Creates a self-extracting archive for all files from the file list.</li>
  *    <li>{@code java PPUtils.java archive1 Archive.java File1 File2 File3 } - Compress the archive to the one row. . Recursive directories are supported.</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
