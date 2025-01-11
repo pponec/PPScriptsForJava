@@ -41,9 +41,10 @@ import java.util.zip.DeflaterOutputStream;
 /**
  * Usage and examples:
  * <ul>
- *    <li>{@code java PPUtils.java find main.*String java$ } - find readable files by regular expressions. Partial compliance is assessed.</li>
- *    <li>{@code java PPUtils.java grep main.*String PPUtils.java } - find readable file rows by a regular expression.</li>
+ *    <li>{@code java PPUtils.java find . 'main.*String' java$ } - find readable files by regular expressions. Partial compliance is assessed.</li>
+ *    <li>{@code java PPUtils.java grep 'main.*String' PPUtils.java } - find readable file rows by a regular expression.</li>
  *    <li>{@code java PPUtils.java grepf 'class\s(\w+)' 'class:%s of ${file}' PPUtils.java} - grep file by grouped regexp and print result by the template.</li>
+ *    <li>{@code java PPUtils.java grepf 'class\s(\w+)' 'class:%s of ${file}' --file file.txt} - grep file by grouped regexp and print result by the template.</li>
  *    <li>{@code java PPUtils.java date} - prints a date by ISO format, for example: "2023-12-31"</li>
  *    <li>{@code java PPUtils.java time} - prints hours and time, for example "2359"</li>
  *    <li>{@code java PPUtils.java datetime} - prints datetime format "2023-12-31T2359"</li>
@@ -62,7 +63,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.6";
+    private final String appVersion = "1.2.7";
 
     private final Class<?> mainClass = getClass();
 
@@ -71,6 +72,8 @@ public final class PPUtils {
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
     private static final String grepSeparator = ":: ";
+
+    private static final String fileSourceArg = "--file";
 
     private static final boolean sortDirectoryLast = true;
 
@@ -99,22 +102,25 @@ public final class PPUtils {
                 final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.get(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
-                new FinderUtilitiy(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
+                new Finder(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
                         .findFiles(file, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 2) {
                     final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, "", null, enforcedLinux, out);
-                    args.stream().skip(2).forEach(file -> pathFinder.grep(Path.of(file), true));
+                    final var finder = new Finder(pathComparator(), bodyPattern, "", null, enforcedLinux, out);
+                    args.stream().skip(2).forEach(file -> finder.grep(Path.of(file), true));
                 }
             }
             case "grepf" -> {
                 if (args.size() > 3) {
                     final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
                     final var bodyFormat = args.get(2).orElse(""); // Pattern.CASE_INSENSITIVE);
-                    final var pathFinder = new FinderUtilitiy(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
-                    args.stream().skip(3).forEach(file -> pathFinder.grep(Path.of(file), true));
+                    final var finder = new Finder(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
+                    final var files = fileSourceArg.equals(args.get(3).orElse("")) && args.size() > 4
+                            ? readFiles(args.getItem(4))
+                            : args.subArray(3);
+                    files.stream().forEach(file -> finder.grep(Path.of(file), true));
                 }
             }
             case "date" -> {
@@ -178,6 +184,19 @@ public final class PPUtils {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern(format));
     }
 
+    private static Array<String> readFiles(String file) {
+        try (Stream<String> lines = Files.lines(Path.of(file))) {
+            final var result = Array.of(lines.toArray(String[]::new));
+            result.stream()
+                    .filter(f -> !Files.isRegularFile(Path.of(f)))
+                    .findAny()
+                    .ifPresent(f -> { throw new IllegalArgumentException("File '%s' was not found.".formatted(f)); });
+            return result;
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
     static final class Converters {
 
         private final PrintStream out;
@@ -209,7 +228,7 @@ public final class PPUtils {
         }
     }
 
-    static final class FinderUtilitiy {
+    static final class Finder {
         private static String FILE_PATTEN = "${file}";
         /** @Nullable */
         private final Pattern bodyPattern;
@@ -223,7 +242,7 @@ public final class PPUtils {
         private final PrintStream out;
         private final Comparator<Path> pathComparator;
 
-        public FinderUtilitiy(Comparator<Path> comparator, Pattern bodyPattern, String bodyFormat, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
+        public Finder(Comparator<Path> comparator, Pattern bodyPattern, String bodyFormat, Pattern filePattern, boolean enforcedLinux, PrintStream out) {
             this.pathComparator = comparator;
             this.bodyPattern = bodyPattern;
             this.bodyFormat = bodyFormat;
@@ -319,24 +338,11 @@ public final class PPUtils {
         ScriptArchiveBuilder(boolean oneRowClass) { this.oneRowClass = oneRowClass; }
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
         public void build(String archiveFile, Array<String> files) throws IOException {
-            if ("--file".equals(files.getFirst().orElse("")) && files.size() == 2) {
+            if (fileSourceArg.equals(files.getFirst().orElse("")) && files.size() == 2) {
                 files = readFiles(files.getItem(1));
             }
             build(Path.of(archiveFile), findInnerFiles(files));
             System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
-        }
-
-        private Array<String> readFiles(String files) {
-            try (Stream<String> lines = Files.lines(Path.of(files))) {
-                final var result = Array.of(lines.toArray(String[]::new));
-                result.stream()
-                        .filter(f -> !Files.isRegularFile(Path.of(f)))
-                        .findAny()
-                        .ifPresent(f -> { throw new IllegalArgumentException("File '%s' was not found.".formatted(f)); });
-                return result;
-            } catch (IOException e) {
-                throw new IllegalArgumentException(e);
-            }
         }
 
         public Set<Path> findInnerFiles(Array<String> items) {
