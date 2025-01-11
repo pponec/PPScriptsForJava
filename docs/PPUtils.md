@@ -16,9 +16,9 @@ Services called from the command line for general use.
 - `PPUtils date-format "yyyy-MM-dd'T'HH:mm:ss.SSS"` - prints a time by a custom format
 - `PPUtils base64encode "file.bin"` - encode any (binary) file.
 - `PPUtils base64decode "file.base64"` - decode base64 encoded file (result removes extension)
-- `PPUtils key json ` - get a value by the (composite) key, for example: `"a.b.c"`
+- `PPUtils key json` - get a value by the (composite) key, for example: `"a.b.c"`
 - `PPUtils archive  Archive.java File1 File2 Dir1 Dir2` - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
-- `PPUtils archive  Archive.java --files FileList.txt` - Creates a self-extracting archive for all files from the file list.</li>
+- `PPUtils archive  Archive.java --file FileList.txt` - Creates a self-extracting archive for all files from the file list.</li>
 - `PPUtils archive1 Archive.java File1 File2 File3` - Compress the archive to the one row. . Recursive directories are supported.</li>
 
    File contents are compressed and converted using Base64.
