@@ -16,9 +16,10 @@ class DirectoryBookmarks:
     NEW_LINE = '\n'
     CURRENT_DIR_MARK = '.'
     HOME_DIR_MARK = '~'
+    UTF8='utf-8'
 
     def __init__(self, store_name=None, enforced_linux=False):
-        self.store_name = store_name or Path(self.USER_HOME) / ".directory-bookmarks-py.csv"
+        self.store_name = store_name or Path(self.USER_HOME) / ".directory-bookmarks.csv"
         self.is_system_windows = not enforced_linux and is_system_windows()
         self.dir_separator = '/' if enforced_linux else os.sep
 
@@ -55,7 +56,7 @@ class DirectoryBookmarks:
 
     def print_directories(self):
         try:
-            with open(self.store_name, 'r', encoding='utf-8') as file:
+            with open(self.store_name, 'r', encoding=self.UTF8) as file:
                 lines = file.readlines()
                 for line in sorted(lines):
                     if not line.startswith(self.COMMENT):
@@ -69,7 +70,7 @@ class DirectoryBookmarks:
         elif key == self.HOME_DIR_MARK:
             return self.USER_HOME
         try:
-            with open(self.store_name, 'r', encoding='utf-8') as file:
+            with open(self.store_name, 'r', encoding=self.UTF8) as file:
                 for line in file:
                     if line.startswith(key + self.CELL_SEPARATOR):
                         return line.split(self.CELL_SEPARATOR, 1)[1].strip()
@@ -81,14 +82,14 @@ class DirectoryBookmarks:
         if self.CELL_SEPARATOR in key or os.sep in key:
             print(f"Invalid bookmark key: {key}")
             sys.exit(-1)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8')
+        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding=self.UTF8)
         try:
-            with open(self.store_name, 'r', encoding='utf-8') as file:
+            with open(self.store_name, 'r', encoding=self.UTF8) as file:
                 lines = file.readlines()
         except FileNotFoundError:
             lines = []
 
-        with open(temp_file.name, 'w', encoding='utf-8') as out_file:
+        with open(temp_file.name, 'w', encoding=self.UTF8) as out_file:
             out_file.write(f"{self.COMMENT} {self.APP_NAME} {self.APP_VERSION}{self.NEW_LINE}")
             if directory:
                 line = f"{key}{self.CELL_SEPARATOR}{directory}"
