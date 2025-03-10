@@ -24,7 +24,7 @@ public final class DirectoryBookmarks {
 
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "1.9.8";
+    final String appVersion = "2.0.0";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
@@ -46,10 +46,10 @@ public final class DirectoryBookmarks {
     final Utilities utils = new Utilities();
 
     public static void main(String[] arguments) throws Exception {
-        var args = Array.of(arguments);
-        var enforcedLinux = args.getFirst().orElse("").equals("linux");
+        var args = MyList.of(arguments);
+        var enforcedLinux = args.getFirst("").equals("linux");
         if (enforcedLinux) {
-            args = args.removeFirst();
+            args.remove(0);
         }
         new DirectoryBookmarks(new File(USER_HOME, ".directory-bookmarks.csv"),
                 System.out,
@@ -70,14 +70,14 @@ public final class DirectoryBookmarks {
     }
 
     /** The main object method */
-    public void mainRun(Array<String> args) throws Exception {
-        final var statement = args.getFirst().orElse("");
+    public void mainRun(MyList<String> args) throws Exception {
+        final var statement = args.getFirst("");
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
             case "l", "list" -> { // list all directories or show the one directory
-                if (args.get(1).orElse("").length() > 0) {
-                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args.getItem(1));
-                    var dir = getDirectory(args.getItem(1), defaultDir);
+                if (args.get(1, "").length() > 0) {
+                    var defaultDir = "Bookmark [%s] has no directory.".formatted(args.get(1));
+                    var dir = getDirectory(args.get(1), defaultDir);
                     if (dir == defaultDir) {
                         exit(-1, defaultDir);
                     } else {
@@ -88,24 +88,24 @@ public final class DirectoryBookmarks {
                 }
             }
             case "g", "get" -> { // get only one directory, default is the home.
-                var key = args.get(1).orElse(homeDirMark);
-                mainRun(Array.of("l", key));
+                var key = args.get(1, homeDirMark);
+                mainRun(MyList.of("l", key));
             }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
-                var msg = args.subArray(3);
-                save(args.getItem(1), args.getItem(2), msg); // (dir, key, comments)
+                var msg = args.stream().skip(3).toList();
+                save(args.get(1), args.get(2), msg); // (dir, key, comments)
             }
             case "d", "delete" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
-                save("", args.getItem(1), Array.of()); // (emptyDir, key, comments)
+                save("", args.get(1), MyList.of()); // (emptyDir, key, comments)
             }
             case "r", "read" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
-                removeBookmark(args.getItem(1));
+                removeBookmark(args.get(1));
             }
             case "b", "bookmarks"-> {
-                var dir = args.get(1).orElse(currentDir);
+                var dir = args.get(1, currentDir);
                 printAllBookmarksOfDirectory(dir);
             }
             case "i", "install"-> {
@@ -131,7 +131,7 @@ public final class DirectoryBookmarks {
                 }
             }
             default -> {
-                out.printf("Arguments are not supported: %s", String.join(" ", args.toList()));
+                out.printf("Arguments are not supported: %s", String.join(" ", args));
                 printHelpAndExit(-1);
             }
         }
@@ -226,10 +226,10 @@ public final class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save("", key, Array.of());
+        save("", key, MyList.of());
     }
 
-    private void save(String dir, String key, Array<String> comments) throws IOException {
+    private void save(String dir, String key, List<String> comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
             exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
@@ -244,9 +244,9 @@ public final class DirectoryBookmarks {
             if (!dir.isEmpty()) {
                 // Function `isSystemMsWindows()` is required due a GitBash
                 writer.append(key).append(cellSeparator).append(convertDir(true, dir, utils.isSystemMsWindows()));
-                if (comments.hasLength()) {
+                if (!comments.isEmpty()) {
                     writer.append(cellSeparator).append(comment);
-                    for (String comment : comments.toList()) {
+                    for (String comment : comments) {
                         writer.append(' ').append(comment);
                     }
                 }
@@ -415,9 +415,10 @@ public final class DirectoryBookmarks {
 
             var classFiles = getAllClassFiles(mainClass);
             // Build a JAR file:
-            var arguments = Array.of(jarExe, "cfe", jarFile, appName).add(classFiles);
-            var process = new ProcessBuilder(arguments.toArray())
-                    .directory(new File(classFiles[0]).getParentFile())
+            var arguments = MyList.of(jarExe, "cfe", jarFile, appName);
+            arguments.addAll(classFiles);
+            var process = new ProcessBuilder(arguments)
+                    .directory(new File(classFiles.get(0)).getParentFile())
                     .start();
             var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
             var exitCode = process.waitFor();
@@ -461,8 +462,8 @@ public final class DirectoryBookmarks {
             }
         }
 
-        private void deleteClasses(String... classFiles) {
-            Stream.of(classFiles).forEach(f -> {
+        private void deleteClasses(List<String> classFiles) {
+            classFiles.stream().forEach(f -> {
                 try {
                     Files.delete(Path.of(f));
                 } catch (IOException e) {
@@ -475,14 +476,14 @@ public final class DirectoryBookmarks {
             return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
         }
 
-        private String[] getAllClassFiles(Class<?> mainClass) {
+        private List<String> getAllClassFiles(Class<?> mainClass) {
             final var result = new ArrayList<String>();
             final var suffix = ".class";
             result.add(mainClass.getSimpleName() + suffix);
             Stream.of(mainClass.getDeclaredClasses())
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
                     .forEach(result::add);
-            return result.toArray(String[]::new);
+            return result;
         }
 
         private void download() throws IOException, InterruptedException {
@@ -506,82 +507,41 @@ public final class DirectoryBookmarks {
         }
     }
 
-    /** The immutable Array wrapper (from the Ujorm framework) */
-    public record Array<T>(T[] array) {
+    /** An extended ArrayList class */
+    public static final class MyList<T> extends ArrayList<T> {
 
-        /** Negative index is supported */
-        public Optional<T> get(final int i) {
-            final var j = i >= 0 ? i : array.length + i;
-            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
+        private MyList(final Collection<T> c) {
+            super(c);
         }
 
-        /** Add new items to the new Array */
-        @SuppressWarnings("unchecked")
-        public Array<T> add(final T... toAdd) {
-            final T[] result = Arrays.copyOf(array, array.length + toAdd.length);
-            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
-            return new Array<>(result);
+        public T get(final int i, final T defaultValue) {
+            final var size = size();
+            final var j = i >= 0 ? i : size + i;
+            final var result = j >= 0 && j < size
+                    ? get(j)
+                    : defaultValue;
+            return result != null ? result : defaultValue;
         }
 
-        /** Negative index is supported */
-        public T getItem(final int i) {
-            return array[i >= 0 ? i : array.length + i];
+        public T getFirst(T defaultValue) {
+            return get(0, defaultValue);
         }
 
-        public Optional<T> getFirst() {
-            return get(0);
+        public T getLast(T defaultValue) {
+            return get(size() - 1, defaultValue);
         }
 
-        public Optional<T> getLast() {
-            return get(-1);
+        public static <T> MyList<T> of(T... items) {
+            return new MyList<T>(Arrays.asList(items));
         }
 
-        public Array<T> removeFirst() {
-            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
-            return new Array<>(result);
-        }
-
-        public Array<T> subArray(final int from) {
-            final var result = Arrays.copyOfRange(array, from, array.length);
-            return new Array<>(result);
-        }
-
-        public List<T> toList() {
-            return List.of(array);
-        }
-
-        public Stream<T> stream() {
-            return Stream.of(array);
-        }
-
-        @SuppressWarnings("unchecked")
-        public T[] toArray() {
-            final var type = array.getClass().getComponentType();
-            final var result = java.lang.reflect.Array.newInstance(type, array.length);
-            System.arraycopy(array, 0, result, 0, array.length);
-            return (T[]) result;
-        }
-
-        public boolean isEmpty() {
-            return array.length == 0;
+        public static <T> MyList<T> of(Collection<T> items) {
+            return new MyList<T>(items);
         }
 
         public boolean hasLength() {
-            return array.length > 0;
-        }
-
-        public int size() {
-            return array.length;
-        }
-
-        @Override
-        public String toString() {
-            return List.of(array).toString();
-        }
-
-        @SuppressWarnings("unchecked")
-        public static <T> Array<T> of(T... chars) {
-            return new Array<>(chars);
+            return size() > 0;
         }
     }
+
 }

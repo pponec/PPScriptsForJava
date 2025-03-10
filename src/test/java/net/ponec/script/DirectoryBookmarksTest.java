@@ -171,8 +171,8 @@ public class DirectoryBookmarksTest {
 
     // =========== UTILS ===========
 
-    private DirectoryBookmarks.Array<String> array(String... args) {
-        return DirectoryBookmarks.Array.of(args);
+    private DirectoryBookmarks.MyList<String> array(String... args) {
+        return DirectoryBookmarks.MyList.of(args);
     }
 
     record DirBookContext  (
@@ -203,7 +203,7 @@ public class DirectoryBookmarksTest {
 
         public Stream<String> bookmarkStream() throws Exception {
             out.reset();
-            instance.mainRun(DirectoryBookmarks.Array.of("list"));
+            instance.mainRun(DirectoryBookmarks.MyList.of("list"));
             return getOutLines();
         }
 
