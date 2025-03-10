@@ -4,20 +4,11 @@
 
 package net.ponec.script;
 
-import javax.tools.ToolProvider;
 import java.io.*;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public final class DirectoryBookmarks {
     static final String USER_HOME = System.getProperty("user.home");
@@ -25,7 +16,6 @@ public final class DirectoryBookmarks {
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
     final String appVersion = "2.0.0";
-    final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
     final String newLine = System.lineSeparator();
@@ -34,7 +24,6 @@ public final class DirectoryBookmarks {
     final String currentDirMark = ".";
     /** Shortcut for a home directory. Empty text is ignored. */
     final String homeDirMark = "~";
-    final Class<?> mainClass = getClass();
     final String sourceUrl = "https://raw.githubusercontent.com/pponec/PPScriptsForJava/%s/src/main/java/net/ponec/script/%s.java"
             .formatted(true ? "main" : "development", appName);
     final File storeName;
@@ -43,7 +32,6 @@ public final class DirectoryBookmarks {
     final boolean exitByException;
     final boolean isSystemWindows;
     final char dirSeparator;
-    final Utilities utils = new Utilities();
 
     public static void main(String[] arguments) throws Exception {
         var args = MyList.of(arguments);
@@ -65,7 +53,7 @@ public final class DirectoryBookmarks {
         this.out = out;
         this.err = err;
         this.exitByException = exitByException;
-        this.isSystemWindows = !enforcedLinux && utils.isSystemMsWindows();
+        this.isSystemWindows = !enforcedLinux && isSystemMsWindows();
         this.dirSeparator = enforcedLinux ? '/' : File.separatorChar;
     }
 
@@ -114,14 +102,6 @@ public final class DirectoryBookmarks {
             case "f", "fix"-> {
                 fixMarksOfMissingDirectories();
             }
-            case "c", "compile" -> {
-                utils.compile();
-            }
-            case "u", "upgrade" -> { // update
-                utils.download();
-                out.printf("%s %s was downloaded. The following compilation is recommended.%n",
-                        appName, getScriptVersion());
-            }
             case "v", "version"-> {
                 var scriptVersion = getScriptVersion();
                 if (appVersion.equals(scriptVersion)) {
@@ -143,7 +123,7 @@ public final class DirectoryBookmarks {
      */
     private void printHelpAndExit(int status) {
         var out = status == 0 ? this.out : this.err;
-        var isJar = utils.isJar();
+        var isJar = false;
         var javaExe = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
@@ -243,7 +223,7 @@ public final class DirectoryBookmarks {
             writer.append(dataHeader).append(newLine);
             if (!dir.isEmpty()) {
                 // Function `isSystemMsWindows()` is required due a GitBash
-                writer.append(key).append(cellSeparator).append(convertDir(true, dir, utils.isSystemMsWindows()));
+                writer.append(key).append(cellSeparator).append(convertDir(true, dir, isSystemMsWindows()));
                 if (!comments.isEmpty()) {
                     writer.append(cellSeparator).append(comment);
                     for (String comment : comments) {
@@ -324,47 +304,11 @@ public final class DirectoryBookmarks {
 
     /** Read version from the external script. */
     private String getScriptVersion() {
-        final var pattern = Pattern.compile("String\\s+appVersion\\s*=\\s*\"(.+)\"\\s*;");
-        try (var reader = new BufferedReader(new FileReader(utils.getSrcPath()))) {
-            return reader.lines()
-                    .map(line ->  {
-                        final var matcher = pattern.matcher(line);
-                        return matcher.find() ? matcher.group(1) : null;
-                    })
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElse(appVersion);
-        } catch (Exception e) {
-            return appVersion;
-        }
+        return appVersion;
     }
 
     private void printInstall() {
-        var exePath = utils.getPathOfRunningApplication().replace(USER_HOME, "$HOME");
-        var javaHome = System.getProperty("java.home");
-        if (isSystemWindows) {
-            var exe = "\"%s\\bin\\java\" --limit-modules %s %s\"%s\""
-                    .formatted(javaHome, requiredJavaModules, utils.isJar() ? "-jar " : "", exePath);
-            var msg = String.join(System.lineSeparator(), ""
-                    , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
-                    , "function directoryBookmarks { & %s $args }".formatted(exe)
-                    , "function cdf { Set-Location -Path $(directoryBookmarks -g $args) }"
-                    , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
-                    , "function ldf { directoryBookmarks l $args }"
-                    , "function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }");
-            out.println(msg);
-        } else {
-            var exe = "\"%s/bin/java\" --limit-modules %s %s\"%s\""
-                    .formatted(javaHome, requiredJavaModules, utils.isJar() ? "-jar " : "", exePath);
-            var msg = String.join(System.lineSeparator(), ""
-                    , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
-                    , "alias directoryBookmarks='%s'".formatted(exe)
-                    , "cdf() { cd \"$(directoryBookmarks g $1)\"; }"
-                    , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
-                    , "ldf() { directoryBookmarks l \"$1\"; }"
-                    , "cpf() { argCount=$#; cp ${@:1:$((argCount-1))} \"$(ldf ${!argCount})\"; }");
-            out.println(msg);
-        }
+        out.println("todo");
     }
 
     /** Convert a directory text to the store format or back */
@@ -389,122 +333,8 @@ public final class DirectoryBookmarks {
 
     //  ~ ~ ~ ~ ~ ~ ~ UTILITIES ~ ~ ~ ~ ~ ~ ~
 
-    class Utilities {
-
-        /** Compile the script and build it to the executable JAR file */
-        private void compile() throws Exception {
-            if (isJar()) {
-                exit(-1, "Use the statement rather: java %s.java c".formatted(appName));
-            }
-
-            var scriptDir = getScriptDir();
-            var jarExe = "%s/bin/jar".formatted(System.getProperty("java.home"));
-            var jarFile = "%s.jar".formatted(appName);
-            var fullJavaClass = "%s/%s.java".formatted(scriptDir, appName);
-            removePackage(Path.of(fullJavaClass));
-
-            var compiler = ToolProvider.getSystemJavaCompiler();
-            if (compiler == null) {
-                throw new IllegalStateException("No Java Compiler is available");
-            }
-            var error = new ByteArrayOutputStream();
-            var result = compiler.run(null, null, new PrintStream(error), fullJavaClass);
-            if (result != 0) {
-                throw new IllegalStateException(error.toString());
-            }
-
-            var classFiles = getAllClassFiles(mainClass);
-            // Build a JAR file:
-            var arguments = MyList.of(jarExe, "cfe", jarFile, appName);
-            arguments.addAll(classFiles);
-            var process = new ProcessBuilder(arguments)
-                    .directory(new File(classFiles.get(0)).getParentFile())
-                    .start();
-            var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            var exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new IllegalStateException(err);
-            }
-
-            // Delete all classes:
-            deleteClasses(classFiles);
-        }
-
-        private String getScriptDir() {
-            var exePath = getPathOfRunningApplication();
-            return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
-        }
-
-        private boolean isJar() {
-            return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
-        }
-
-        /**
-         * Get a full path to this source Java file.
-         */
-        private String getSrcPath() {
-            return "%s/%s.java".formatted(getScriptDir(), appName);
-        }
-
-        private String getPathOfRunningApplication() {
-            final var protocol = "file:/";
-            try {
-                final var location = mainClass.getProtectionDomain().getCodeSource().getLocation();
-                var path = location.toString();
-                if (isSystemWindows && path.startsWith(protocol)) {
-                    path = path.substring(protocol.length());
-                } else {
-                    path = location.getPath();
-                }
-                return URLDecoder.decode(path, StandardCharsets.UTF_8);
-            } catch (Exception e) {
-                return "%s.%s".formatted(appName, "java");
-            }
-        }
-
-        private void deleteClasses(List<String> classFiles) {
-            classFiles.stream().forEach(f -> {
-                try {
-                    Files.delete(Path.of(f));
-                } catch (IOException e) {
-                    throw new IllegalStateException(e);
-                }
-            });
-        }
-
-        private boolean isSystemMsWindows() {
-            return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
-        }
-
-        private List<String> getAllClassFiles(Class<?> mainClass) {
-            final var result = new ArrayList<String>();
-            final var suffix = ".class";
-            result.add(mainClass.getSimpleName() + suffix);
-            Stream.of(mainClass.getDeclaredClasses())
-                    .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
-                    .forEach(result::add);
-            return result;
-        }
-
-        private void download() throws IOException, InterruptedException {
-            var client = HttpClient.newHttpClient();
-            var request = HttpRequest.newBuilder()
-                    .uri(URI.create(sourceUrl))
-                    .build();
-            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                Files.writeString(Path.of(getSrcPath()), response.body());
-            } else {
-                throw new IllegalStateException("Downloading error code: %s".formatted(response.statusCode()));
-            }
-        }
-
-        private void removePackage(Path fullJavaClass) throws IOException {
-            var packageRegexp = "package %s;".formatted(mainClass.getPackageName());
-            var script = Files.readString(fullJavaClass);
-            script = script.replaceFirst(packageRegexp, "");
-            Files.writeString(fullJavaClass, script);
-        }
+    private boolean isSystemMsWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
     }
 
     /** An extended ArrayList class */
