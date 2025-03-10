@@ -1,3 +1,7 @@
+# Running by Python 17: $ python3 DirectoryBookmarks.py
+# Licence: Apache License, Version 2.0, https://github.com/pponec/
+# Enable PowerShell in Windows 11: Set-ExecutionPolicy unrestricted
+
 import os
 import sys
 import shutil
