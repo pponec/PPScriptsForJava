@@ -18,7 +18,7 @@ class DirectoryBookmarks:
     HOME_DIR_MARK = '~'
 
     def __init__(self, store_name=None, enforced_linux=False):
-        self.store_name = store_name or Path(self.USER_HOME) / ".directory-bookmarks.csv"
+        self.store_name = store_name or Path(self.USER_HOME) / ".directory-bookmarks-py.csv"
         self.is_system_windows = not enforced_linux and is_system_windows()
         self.dir_separator = '/' if enforced_linux else os.sep
 
