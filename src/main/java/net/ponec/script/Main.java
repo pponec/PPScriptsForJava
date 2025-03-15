@@ -9,7 +9,7 @@ public class Main {
 
 	private static final Set<Class<?>> classes = Set.of(
 			DirectoryBookmarks.class,
-			Mp3PlayerGenerator.class,
+			Mp3Player.class,
 			PPUtils.class,
 			SqlExecutor.class
 	);
