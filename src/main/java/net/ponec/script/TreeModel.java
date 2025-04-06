@@ -1,9 +1,7 @@
 package net.ponec.script;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * TreeModel represents a simple hierarchical data structure used for
@@ -28,60 +26,59 @@ import java.util.*;
  */
 public class TreeModel {
 
-    public static Charset CHARSET = StandardCharsets.UTF_8;
-
-    private final Map<String, Object> root = new HashMap<>();
+    private final Map<String, Object> root = new TreeMap<>();
 
     /**
      * Parses a PROPERTIES formatted string and returns a TreeModel instance.
      */
-    public static TreeModel parseProps(String propsText) {
+    public static TreeModel ofProps(String propsText) {
         var result = new TreeModel();
-        var props = new Properties();
-        try {
-            props.load(new ByteArrayInputStream(propsText.getBytes(CHARSET)));
-            for (var key : props.stringPropertyNames()) {
-                result.setValue(key, props.getProperty(key));
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid properties format", e);
-        }
+        propsText.lines()
+                .filter(line -> !line.trim().isEmpty()) // Filter out empty lines
+                .map(line -> line.split("=", 2)) // Split each line by "="
+                .filter(parts -> parts.length == 2) // Ensure there are exactly two parts (key, value)
+                .collect(Collectors.toMap(
+                        parts -> parts[0].trim(),  // Key
+                        parts -> parts[1].trim(),  // Value
+                        (existing, replacement) -> replacement)) // Use the last value
+                .forEach(result::setValue);
         return result;
     }
 
     /**
      * Parses a simple YAML formatted string and returns a TreeModel instance.
      */
-    public static TreeModel parseYaml(String yamlText) {
+    public static TreeModel ofYaml(String yamlText) {
         var result = new TreeModel();
-        var lines = yamlText.split("\\r?\\n");
         var keyStack = new ArrayDeque<String>();
-        var prevIndent = 0;
+        var indentStack = new ArrayDeque<Integer>();
 
-        for (var line : lines) {
-            if (line.trim().isEmpty()) continue;
+        yamlText.lines().forEach(line -> {
+            if (line.trim().isEmpty()) return;
+
             var indent = countLeadingSpaces(line);
             var trimmedLine = line.trim();
-
             var parts = trimmedLine.split(":", 2);
-            if (parts.length < 2) continue;
+            if (parts.length < 2) return;
 
             var key = parts[0].trim();
             var value = parts[1].trim();
 
-            while (indent < prevIndent && !keyStack.isEmpty()) {
-                keyStack.pop();
-                prevIndent -= 2;
+            // Step back to the correct level
+            while (!indentStack.isEmpty() && indent <= indentStack.peekLast()) {
+                indentStack.removeLast();
+                keyStack.removeLast();
             }
 
             if (!value.isEmpty()) {
-                var fullKey = String.join(".", keyStack) + (keyStack.isEmpty() ? "" : ".") + key;
-                result.setValue(fullKey, value);
+                var fullKeyParts = new ArrayList<>(keyStack);
+                fullKeyParts.add(key);
+                result.setValue(String.join(".", fullKeyParts), value);
             } else {
-                keyStack.push(key);
-                prevIndent = indent;
+                keyStack.addLast(key);
+                indentStack.addLast(indent);
             }
-        }
+        });
 
         return result;
     }
@@ -90,15 +87,9 @@ public class TreeModel {
      * Converts the tree model to a PROPERTIES formatted string.
      */
     public String toProps() {
-        var result = new Properties();
-        buildProps("", root, result);
-        var out = new java.io.ByteArrayOutputStream();
-        try {
-            result.store(out, null);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize properties", e);
-        }
-        return out.toString(CHARSET);
+        final var result = new StringBuilder();
+        buildProps("", root, result); // Recur for all tree nodes and build the result
+        return result.toString();
     }
 
     /**
@@ -136,19 +127,19 @@ public class TreeModel {
         var parts = key.split("\\.");
         var current = root;
         for (var i = 0; i < parts.length - 1; i++) {
-            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new HashMap<>());
+            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new TreeMap<>());
         }
         current.put(parts[parts.length - 1], value);
     }
 
-    private void buildProps(String prefix, Object node, Properties props) {
+    private void buildProps(String prefix, Object node, StringBuilder props) {
         if (node instanceof Map<?, ?> map) {
             for (var entry : map.entrySet()) {
                 var newPrefix = prefix.isEmpty() ? (String) entry.getKey() : prefix + "." + entry.getKey();
                 buildProps(newPrefix, entry.getValue(), props);
             }
-        } else if (node instanceof String str) {
-            props.setProperty(prefix, str);
+        } else if (node instanceof String value) {
+            props.append(prefix).append(" = ").append(value).append("\n");
         }
     }
 
@@ -170,7 +161,7 @@ public class TreeModel {
         return sb.append(" ".repeat(Math.max(0, spaces)));
     }
 
-    public static int countLeadingSpaces(String line) {
+    private static int countLeadingSpaces(String line) {
         var count = 0;
         while (count < line.length() && line.charAt(count) == ' ') count++;
         return count;
@@ -179,5 +170,17 @@ public class TreeModel {
     /** Print the YAML formát */
     public String toString() {
         return toYaml();
+    }
+
+    // --- UTILITIES ---
+
+    /** Convert YAML to PROPERTIES */
+    public static String convertYamlToProps(String yaml) {
+        return TreeModel.ofYaml(yaml).toProps();
+    }
+
+    /** Convert PROPERTIES to YAML */
+    public static String convertPropsToYaml(String properties) {
+        return TreeModel.ofProps(properties).toYaml();
     }
 }

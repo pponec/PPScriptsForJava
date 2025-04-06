@@ -1,49 +1,138 @@
 package net.ponec.script;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit test class for {@link TreeModel}.
+ * <p>
+ * This class verifies correctness of the TreeModel class methods
+ * for parsing and exporting data between PROPERTIES and YAML formats.
+ * All values are expected to be simple strings.
+ * <p>
+ * The tests cover:
+ * <ul>
+ *     <li>Conversion from PROPERTIES to YAML</li>
+ *     <li>Conversion from YAML to PROPERTIES</li>
+ *     <li>Retrieval of values using dot-notation keys</li>
+ * </ul>
+ */
 public class TreeModelTest {
 
     @Test
     public void testPropsToYamlConversion() {
         var props = """
+            user.name=TEST
             user.name=John
-            user.age=30
-            user.city=London
+            user.name=Růžena
+            user.age= 30
+            user.address.city = London
             """;
 
-        var treeModel = TreeModel.parseProps(props);
+        var treeModel = TreeModel.ofProps(props);
         var yaml = treeModel.toYaml();
 
-        assertTrue(yaml.contains("name: John"));
+        assertTrue(yaml.contains("name: Růžena"));
         assertTrue(yaml.contains("age: 30"));
         assertTrue(yaml.contains("city: London"));
+
+        assertEquals("Růžena", treeModel.getValue("user.name"));
+        assertEquals("30", treeModel.getValue("user.age"));
+        assertEquals("London", treeModel.getValue("user.address.city"));
+    }
+
+    @Test
+    public void testYamlToPropsConversionPlain() {
+        var yaml = """
+            user:
+              name: Julien
+              contact: 
+                email: test@test.test
+                phone: 123456789
+                address:
+                  city: Paris
+                  street: Trocadéro
+              age : 99
+            """;
+
+        var treeModel = TreeModel.ofYaml(yaml);
+        assertEquals("Paris", treeModel.getValue("user.contact.address.city"));
+        assertEquals("99", treeModel.getValue("user.age"));
     }
 
     @Test
     public void testYamlToPropsConversion() {
         var yaml = """
             user:
-              name: Alice
-              age: 25
-              city: Paris
+              name: Růžena
+              address:
+                city: Paris
+              age : 25
             """;
 
-        var treeModel = TreeModel.parseYaml(yaml);
+        var treeModel = TreeModel.ofYaml(yaml);
         var props = treeModel.toProps();
 
-        assertTrue(props.contains("user.name=Alice"));
-        assertTrue(props.contains("user.age=25"));
-        assertTrue(props.contains("user.city=Paris"));
+        assertTrue(props.contains("user.name = Růžena"));
+        assertTrue(props.contains("user.age = 25"));
+        assertTrue(props.contains("user.address.city = Paris"));
+
+        assertEquals("Růžena", treeModel.getValue("user.name"));
+        assertEquals("25", treeModel.getValue("user.age"));
+        assertEquals("Paris", treeModel.getValue("user.address.city"));
     }
 
     @Test
     public void testGetValueWithDefault() {
-        var props = "config.mode=debug";
-        var model = TreeModel.parseProps(props);
-        assertEquals("debug", model.getValue("config.mode", "default"));
-        assertEquals("default", model.getValue("config.unknown", "default"));
+        var props = """
+            user.name=Růžena
+            user.age = 30
+            user.address.city\t=\tLondon
+            """;
+        var treeModel = TreeModel.ofProps(props);
+
+        assertEquals("Růžena", treeModel.getValue("user.name", ""));
+        assertEquals("30", treeModel.getValue("user.age", ""));
+        assertEquals("London", treeModel.getValue("user.address.city", ""));
+
+        assertEquals(".", treeModel.getValue("user.aa", "."));
+        assertEquals("test", treeModel.getValue("user.bb", "test"));
+        assertNull(treeModel.getValue("user.cc", null));
     }
+
+    // ----- Converters -----
+
+    /** Convert YAML to PROPERTIES */
+    public String convertYamlToProps(String yaml) {
+        return new TreeModel().toProps();
+    }
+
+    /** Convert YAML to PROPERTIES */
+    public String convertPropsToYaml(String properties) {
+        return new TreeModel().toYaml();
+    }
+
+    @Test
+    void testConvert() {
+        var props = """
+            user.address.city = London
+            user.age = 30
+            user.name = Růžena
+            """;
+
+        var yaml = """
+            user:
+              address:
+                city: London
+              age: 30
+              name: Růžena
+                """;
+
+        var result1 = TreeModel.convertPropsToYaml(props);
+        assertEquals(yaml, result1);
+
+        var result2 = TreeModel.convertYamlToProps(yaml);
+        assertEquals(props, result2);
+    }
+
 }
