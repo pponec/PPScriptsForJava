@@ -14,7 +14,7 @@ import javax.imageio.ImageIO;
  * <p>It takes two arguments: the border width and the image file path.
  * The output is a new image with mirrored borders saved as "output_with_mirrored_borders.png".</p>
  *
- * <p>Usage: {@code java MirrorBorder <border-width> <image-file>}</p>
+ * <p>Usage: {@code java MirrorBorder <image-file> [border-width] }</p>
  */
 public class ImageBorderMirror {
     public static void main(String[] args) {
@@ -26,15 +26,15 @@ public class ImageBorderMirror {
     }
 
     public void _main(String... args) throws IOException {
-        if (args.length != 2) {
-            System.out.printf("Usage: java %s.java <border-width> <image-file>%n",
+        if (args.length == 0) {
+            System.out.printf("Usage: java %s.java <image-file> [border-width]%n",
                     getClass().getSimpleName());
             return;
         }
 
         // Parse command-line arguments
-        var borderWidth = Integer.parseInt(args[0]);
-        var inputImagePath = Path.of(args[1]);
+        var inputImagePath = Path.of(args[0]);
+        var borderWidth = args.length < 2 ? 150 : Integer.parseInt(args[1]);
         var outputImagePath = inputImagePath
                 .toAbsolutePath()
                 .getParent()
