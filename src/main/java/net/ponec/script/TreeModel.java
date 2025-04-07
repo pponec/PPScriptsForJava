@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
  *   <li>Exporting the model back into PROPERTIES or YAML string formats</li>
  *   <li>Retrieving values by fully qualified keys, with support for default values</li>
  * </ul>
+ * See <a href="https://github.com/pponec/PPScriptsForJava">original</> project.
  */
 public class TreeModel {
 
@@ -39,7 +40,8 @@ public class TreeModel {
 
     private static Map<String, String> collectMap(String propsText) {
         return propsText.lines()
-                .filter(line -> !line.trim().isEmpty()) // Filter out empty lines
+                .filter(line -> !line.trim().isEmpty())       // Filter out empty lines
+                .filter(line -> !line.trim().startsWith("#")) // Filter out comments
                 .map(line -> line.split("=", 2)) // Split each line by "="
                 .filter(parts -> parts.length == 2) // Ensure there are exactly two parts (key, value)
                 .collect(Collectors.toMap(
@@ -56,8 +58,10 @@ public class TreeModel {
         var keyStack = new ArrayDeque<String>();
         var indentStack = new ArrayDeque<Integer>();
 
-        yamlText.lines().forEach(line -> {
-            if (line.trim().isEmpty()) return;
+        yamlText.lines()
+                .filter(line -> !line.trim().isEmpty())
+                .filter(line -> !line.trim().startsWith("#"))
+                .forEach(line -> {
 
             var indent = countLeadingSpaces(line);
             var trimmedLine = line.trim();
@@ -99,9 +103,7 @@ public class TreeModel {
      * Converts the tree model to a simple YAML formatted string.
      */
     public Map<String,String> toMap() {
-        final var result = new TreeMap<String, String>();
-        result.putAll(collectMap(toProps()));
-        return result;
+        return new TreeMap<>(collectMap(toProps()));
     }
 
     /**
@@ -133,9 +135,7 @@ public class TreeModel {
         return current instanceof String ? (String) current : defaultValue;
     }
 
-    // --- Private Helpers ---
-
-    private void setValue(String key, String value) {
+    public void setValue(String key, String value) {
         var parts = key.split("\\.");
         var current = root;
         for (var i = 0; i < parts.length - 1; i++) {
@@ -143,6 +143,12 @@ public class TreeModel {
         }
         current.put(parts[parts.length - 1], value);
     }
+
+    public void setValues(Map<String, String> values) {
+        values.forEach(this::setValue);
+    }
+
+    // --- Private Helpers ---
 
     private void buildProps(String prefix, Object node, StringBuilder props) {
         if (node instanceof Map<?, ?> map) {

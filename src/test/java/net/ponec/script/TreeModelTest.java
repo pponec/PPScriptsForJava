@@ -28,6 +28,7 @@ public class TreeModelTest {
             user.age= 30
             user.address.city = London
             user.note =
+            #Comment= 
             """;
 
         var treeModel = TreeModel.ofProps(props);
@@ -37,6 +38,7 @@ public class TreeModelTest {
         assertTrue(yaml.contains("age: 30"));
         assertTrue(yaml.contains("city: London"));
         assertTrue(yaml.contains("note:"));
+        assertFalse(yaml.contains("Users"));
 
         assertEquals("Růžena", treeModel.getValue("user.name"));
         assertEquals("30", treeModel.getValue("user.age"));
@@ -56,13 +58,15 @@ public class TreeModelTest {
                   city: Paris
                   street: Trocadéro
               age : 99
-              note :
+              note:
+            #Comment:
             """;
 
         var treeModel = TreeModel.ofYaml(yaml);
         assertEquals("Paris", treeModel.getValue("user.contact.address.city"));
         assertEquals("99", treeModel.getValue("user.age"));
      // assertEquals("", treeModel.getValue("user.note")); // TODO
+        assertFalse(treeModel.toYaml().contains("Users"));
     }
 
     @Test
