@@ -33,16 +33,19 @@ public class TreeModel {
      */
     public static TreeModel ofProps(String propsText) {
         var result = new TreeModel();
-        propsText.lines()
+        collectMap(propsText).forEach(result::setValue);
+        return result;
+    }
+
+    private static Map<String, String> collectMap(String propsText) {
+        return propsText.lines()
                 .filter(line -> !line.trim().isEmpty()) // Filter out empty lines
                 .map(line -> line.split("=", 2)) // Split each line by "="
                 .filter(parts -> parts.length == 2) // Ensure there are exactly two parts (key, value)
                 .collect(Collectors.toMap(
                         parts -> parts[0].trim(),  // Key
                         parts -> parts[1].trim(),  // Value
-                        (existing, replacement) -> replacement)) // Use the last value
-                .forEach(result::setValue);
-        return result;
+                        (existing, replacement) -> replacement)); // Use the last value
     }
 
     /**
@@ -90,6 +93,15 @@ public class TreeModel {
         final var result = new StringBuilder();
         buildProps("", root, result); // Recur for all tree nodes and build the result
         return result.toString();
+    }
+
+    /**
+     * Converts the tree model to a simple YAML formatted string.
+     */
+    public Map<String,String> toMap() {
+        final var result = new TreeMap<String, String>();
+        result.putAll(collectMap(toProps()));
+        return result;
     }
 
     /**
