@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 public class TreeModelTest {
 
     @Test
-    public void testPropsToYamlConversion() {
+    public void testToYaml() {
         var props = """
             user.name=TEST
             user.name=John
@@ -47,7 +47,7 @@ public class TreeModelTest {
     }
 
     @Test
-    public void testYamlToPropsConversionPlain() {
+    public void testToPropsPlain() {
         var yaml = """
             user:
               name: Julien
@@ -57,20 +57,25 @@ public class TreeModelTest {
                 address:
                   city: Paris
                   street: Trocadéro
-              age : 99
-              note:
+              age  : 99
+              login:
+              note : 'A long text'
+              url  : 'https://test.txt'
             #Comment:
             """;
 
         var treeModel = TreeModel.ofYaml(yaml);
         assertEquals("Paris", treeModel.getValue("user.contact.address.city"));
         assertEquals("99", treeModel.getValue("user.age"));
+        assertEquals(null, treeModel.getValue("user.login"));
+        assertEquals("A long text", treeModel.getValue("user.note"));
+        assertEquals("https://test.txt", treeModel.getValue("user.url"));
      // assertEquals("", treeModel.getValue("user.note")); // TODO
         assertFalse(treeModel.toYaml().contains("Users"));
     }
 
     @Test
-    public void testYamlToPropsConversion() {
+    public void testToProps() {
         var yaml = """
             user:
               name: Růžena
@@ -92,7 +97,7 @@ public class TreeModelTest {
     }
 
     @Test
-    public void testGetValueWithDefault() {
+    public void testGetValue() {
         var props = """
             user.name=Růžena
             user.age = 30
@@ -127,6 +132,8 @@ public class TreeModelTest {
             user.address.city = London
             user.age = 30
             user.name = Růžena
+            user.note = Long text
+            user.url = https://test.txt
             """;
 
         var yaml = """
@@ -135,6 +142,8 @@ public class TreeModelTest {
                 city: London
               age: 30
               name: Růžena
+              note: 'Long text'
+              url: 'https://test.txt'
                 """;
 
         var result1 = TreeModel.convertPropsToYaml(props);

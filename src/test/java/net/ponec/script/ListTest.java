@@ -8,7 +8,7 @@ import net.ponec.script.PPUtils.Array;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MyListTest {
+class ListTest {
 
     private final Array<Character> array = createArray();
     private final Array<Character> empty = Array.of();

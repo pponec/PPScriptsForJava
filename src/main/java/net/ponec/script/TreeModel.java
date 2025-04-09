@@ -69,7 +69,7 @@ public class TreeModel {
             if (parts.length < 2) return;
 
             var key = parts[0].trim();
-            var value = parts[1].trim();
+            var value = parts[1].trim().replaceAll("^'(.*)'$", "$1");
 
             // Step back to the correct level
             while (!indentStack.isEmpty() && indent <= indentStack.peekLast()) {
@@ -165,14 +165,21 @@ public class TreeModel {
         if (node instanceof Map<?, ?> map) {
             for (var entry : map.entrySet()) {
                 indent(sb, indent).append(entry.getKey()).append(":");
-                if (entry.getValue() instanceof String) {
-                    sb.append(" ").append(entry.getValue()).append("\n");
+                if (entry.getValue() instanceof String value) {
+                    sb.append(" ").append(toYamlValue(value)).append("\n");
                 } else {
                     sb.append("\n");
                     buildYaml(sb, entry.getValue(), indent + 2);
                 }
             }
         }
+    }
+
+    /** Enclose the text with a pair of apostrophes. */
+    private String toYamlValue(final String value) {
+        return value.matches(".*[\\s:].*")
+                ? "'" + value + "'"
+                : value;
     }
 
     private StringBuilder indent(StringBuilder sb, int spaces) {

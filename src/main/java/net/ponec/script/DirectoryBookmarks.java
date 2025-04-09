@@ -46,7 +46,7 @@ public final class DirectoryBookmarks {
     final Utilities utils = new Utilities();
 
     public static void main(String[] arguments) throws Exception {
-        var args = MyList.of(arguments);
+        var args = List.of(arguments);
         var enforcedLinux = args.getFirst("").equals("linux");
         if (enforcedLinux) {
             args.remove(0);
@@ -70,7 +70,7 @@ public final class DirectoryBookmarks {
     }
 
     /** The main object method */
-    public void mainRun(MyList<String> args) throws Exception {
+    public void mainRun(List<String> args) throws Exception {
         final var statement = args.getFirst("");
         if (statement.isEmpty()) printHelpAndExit(0);
         switch (statement.charAt(0) == '-' ? statement.substring(1) : statement) {
@@ -89,7 +89,7 @@ public final class DirectoryBookmarks {
             }
             case "g", "get" -> { // get only one directory, default is the home.
                 var key = args.get(1, homeDirMark);
-                mainRun(MyList.of("l", key));
+                mainRun(List.of("l", key));
             }
             case "s", "save" -> {
                 if (args.size() < 3) printHelpAndExit(-1);
@@ -98,7 +98,7 @@ public final class DirectoryBookmarks {
             }
             case "d", "delete" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
-                save("", args.get(1), MyList.of()); // (emptyDir, key, comments)
+                save("", args.get(1), List.of()); // (emptyDir, key, comments)
             }
             case "r", "read" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
@@ -226,10 +226,10 @@ public final class DirectoryBookmarks {
     }
 
     private void removeBookmark(String key) throws IOException {
-        save("", key, MyList.of());
+        save("", key, List.of());
     }
 
-    private void save(String dir, String key, List<String> comments) throws IOException {
+    private void save(String dir, String key, Collection<String> comments) throws IOException {
         if (key.indexOf(cellSeparator) >= 0 || key.indexOf(dirSeparator) >= 0) {
             exit(-1, "The bookmark contains a tab or a slash: '%s'".formatted(key));
         }
@@ -311,7 +311,7 @@ public final class DirectoryBookmarks {
                     .map(line -> line.substring(0, line.indexOf(cellSeparator)))
                     .toList();
         }
-        return result;
+        return List.of(result);
     }
 
     private void printAllBookmarksOfDirectory(String directory) throws IOException {
@@ -415,7 +415,7 @@ public final class DirectoryBookmarks {
 
             var classFiles = getAllClassFiles(mainClass);
             // Build a JAR file:
-            var arguments = MyList.of(jarExe, "cfe", jarFile, appName);
+            var arguments = List.of(jarExe, "cfe", jarFile, appName);
             arguments.addAll(classFiles);
             var process = new ProcessBuilder(arguments)
                     .directory(new File(classFiles.get(0)).getParentFile())
@@ -483,7 +483,7 @@ public final class DirectoryBookmarks {
             Stream.of(mainClass.getDeclaredClasses())
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
                     .forEach(result::add);
-            return result;
+            return List.of(result);
         }
 
         private void download() throws IOException, InterruptedException {
@@ -508,9 +508,9 @@ public final class DirectoryBookmarks {
     }
 
     /** An extended ArrayList class */
-    public static final class MyList<T> extends ArrayList<T> {
+    public static final class List<T> extends ArrayList<T> {
 
-        private MyList(final Collection<T> c) {
+        private List(final Collection<T> c) {
             super(c);
         }
 
@@ -531,12 +531,12 @@ public final class DirectoryBookmarks {
             return get(size() - 1, defaultValue);
         }
 
-        public static <T> MyList<T> of(T... items) {
-            return new MyList<T>(Arrays.asList(items));
+        public static <T> List<T> of(T... items) {
+            return new List<T>(Arrays.asList(items));
         }
 
-        public static <T> MyList<T> of(Collection<T> items) {
-            return new MyList<T>(items);
+        public static <T> List<T> of(Collection<T> items) {
+            return new List<T>(items);
         }
 
         public boolean hasLength() {
