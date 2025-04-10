@@ -60,6 +60,7 @@ public class TreeModelTest {
               age  : 99
               login:
               note : 'A long text'
+              noteq: ''''
               url  : 'https://test.txt'
             #Comment:
             """;
@@ -69,6 +70,7 @@ public class TreeModelTest {
         assertEquals("99", treeModel.getValue("user.age"));
         assertEquals(null, treeModel.getValue("user.login"));
         assertEquals("A long text", treeModel.getValue("user.note"));
+        assertEquals("''", treeModel.getValue("user.noteq"));
         assertEquals("https://test.txt", treeModel.getValue("user.url"));
      // assertEquals("", treeModel.getValue("user.note")); // TODO
         assertFalse(treeModel.toYaml().contains("Users"));

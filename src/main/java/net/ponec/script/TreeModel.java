@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 /**
  * TreeModel represents a simple hierarchical data structure used for
- * converting between PROPERTIES and YAML formats.
+ * converting between PROPERTIES and simplified YAML formats.
  *
  * <p>The model stores data as a tree where all leaf nodes are {@code String} values.
  * In the PROPERTIES format, nested keys are represented using dot notation
@@ -69,8 +69,7 @@ public class TreeModel {
             if (parts.length < 2) return;
 
             var key = parts[0].trim();
-            var value = parts[1].trim().replaceAll("^'(.*)'$", "$1");
-
+            var value = parts[1].trim().replaceAll("^'(.*)'$", "$1"); // No match, return original.
             // Step back to the correct level
             while (!indentStack.isEmpty() && indent <= indentStack.peekLast()) {
                 indentStack.removeLast();
