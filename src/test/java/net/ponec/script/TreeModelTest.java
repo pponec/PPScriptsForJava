@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 public class TreeModelTest {
 
     @Test
-    public void testToYaml() {
+    public void ofProps() {
         var props = """
             user.name=TEST
             user.name=John
@@ -47,7 +47,7 @@ public class TreeModelTest {
     }
 
     @Test
-    public void testToPropsPlain() {
+    public void ofYamlPlain() {
         var yaml = """
             user:
               name: Julien
@@ -77,7 +77,7 @@ public class TreeModelTest {
     }
 
     @Test
-    public void testToProps() {
+    public void toProps() {
         var yaml = """
             user:
               name: Růžena
@@ -99,7 +99,7 @@ public class TreeModelTest {
     }
 
     @Test
-    public void testGetValue() {
+    public void ofProps2() {
         var props = """
             user.name=Růžena
             user.age = 30
@@ -115,6 +115,22 @@ public class TreeModelTest {
         assertEquals("test", treeModel.getValue("user.bb", "test"));
         assertNull(treeModel.getValue("user.cc", null));
     }
+
+    @Test
+    public void ofPropsWrong() {
+        var props = """
+            user = Růžena
+            user.age = 30
+            user.active = true
+            """;
+
+        var exception = assertThrows(IllegalArgumentException.class, () -> {
+            TreeModel.ofProps(props);
+        });
+
+        assertEquals("Duplicated YAML key: 'user.active'", exception.getMessage());
+    }
+
 
     // ----- Converters -----
 

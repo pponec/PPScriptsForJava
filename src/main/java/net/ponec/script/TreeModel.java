@@ -24,6 +24,9 @@ import java.util.stream.Collectors;
  *   <li>Retrieving values by fully qualified keys, with support for default values</li>
  * </ul>
  * See <a href="https://github.com/pponec/PPScriptsForJava">original</> project.
+ *
+ * @version 2025-04-10
+ * @author https://github.com/pponec
  */
 public class TreeModel {
 
@@ -138,7 +141,11 @@ public class TreeModel {
         var parts = key.split("\\.");
         var current = root;
         for (var i = 0; i < parts.length - 1; i++) {
-            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new TreeMap<>());
+            try {
+                current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new TreeMap<>());
+            } catch (ClassCastException ex) {
+                throw new IllegalArgumentException("Duplicated YAML key: '%s'".formatted(key), ex);
+            }
         }
         current.put(parts[parts.length - 1], value);
     }

@@ -19,6 +19,15 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+/**
+ * Manages a collection of directory bookmarks, enabling users to add, remove,
+ * and retrieve bookmarked directories. This class provides functionalities to
+ * handle bookmarks efficiently and supports operations such as loading from
+ * and saving to a persistent storage.
+ *
+ * @author https://github.com/pponec
+ * @version 2025-04-10
+ */
 public final class DirectoryBookmarks {
     static final String USER_HOME = System.getProperty("user.home");
 
