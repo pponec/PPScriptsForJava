@@ -85,40 +85,40 @@ public final class PPUtils {
     }
 
     public static void main(final String[] args) throws Exception {
-        new PPUtils(System.out).mainRun(Array.of(args));
+        new PPUtils(System.out).mainRun(List.of(args));
     }
 
-    void mainRun(Array<String> args) throws Exception {
-        final var enforcedLinux = args.getFirst().orElse("").equals("linux");
+    void mainRun(List<String> args) throws Exception {
+        final var enforcedLinux = args.getFirst("").equals("linux");
         if (enforcedLinux) {
-            args = args.removeFirst();
+            args.remove(0);
         }
-        var statement = args.getFirst().orElse("");
+        var statement = args.getFirst("");
         switch (statement) {
             case "find" -> { // Example: find [--printfileonly] public.+interface java$
-                final var file = args.get(1).map(Path::of).get();
-                final var fileOnly = args.get(2).orElse("").equals("--printfileonly");
+                final var file = args.getOptional(1).map(Path::of).get();
+                final var fileOnly = args.get(2, "").equals("--printfileonly");
                 final var subArgs = args.subArray(2 + (fileOnly ? 1 : 0 ));
-                final var bodyPattern = subArgs.get(-2).map(Pattern::compile).orElse(null);
-                final var filePattern = subArgs.get(-1).map(Pattern::compile).orElseThrow(() ->
+                final var bodyPattern = subArgs.getOptional(-2).map(Pattern::compile).orElse(null);
+                final var filePattern = subArgs.getOptional(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
                 new Finder(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
                         .findFiles(file, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 2) {
-                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var bodyPattern = args.getOptional(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
                     final var finder = new Finder(pathComparator(), bodyPattern, "", null, enforcedLinux, out);
                     args.stream().skip(2).forEach(file -> finder.grep(Path.of(file), true));
                 }
             }
             case "grepf" -> {
                 if (args.size() > 3) {
-                    final var bodyPattern = args.get(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
-                    final var bodyFormat = args.get(2).orElse(""); // Pattern.CASE_INSENSITIVE);
+                    final var bodyPattern = args.getOptional(1).map(Pattern::compile).orElse(null); // Pattern.CASE_INSENSITIVE);
+                    final var bodyFormat = args.getOptional(2).orElse(""); // Pattern.CASE_INSENSITIVE);
                     final var finder = new Finder(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
-                    final var files = fileSourceArg.equals(args.get(3).orElse("")) && args.size() > 4
-                            ? readFiles(args.getItem(4))
+                    final var files = fileSourceArg.equals(args.get(3, "")) && args.size() > 4
+                            ? readFiles(args.get(4, ""))
                             : args.subArray(3);
                     files.stream().forEach(file -> finder.grep(Path.of(file), true));
                 }
@@ -136,25 +136,25 @@ public final class PPUtils {
                 out.println(currentDate(dateIsoFormat));
             }
             case "date-format" -> {
-                out.println(currentDate(args.get(1).orElseThrow(() -> new IllegalArgumentException(
+                out.println(currentDate(args.getOptional(1).orElseThrow(() -> new IllegalArgumentException(
                         "Use some format, for example: \"%s\"".formatted(dateIsoFormat)))));
             }
             case "base64encode" -> {
-                new Converters(out).convertBase64(args.get(1).orElse(""), true);
+                new Converters(out).convertBase64(args.get(1, ""), true);
             }
             case "base64decode" -> {
-                new Converters(out).convertBase64(args.get(1).orElse(""), false);
+                new Converters(out).convertBase64(args.get(1, ""), false);
             }
             case "json" -> {
-                final var key = args.get(1).orElse("");
-                final var json = Files.readString(Path.of(args.get(2).orElse("?")));
+                final var key = args.get(1, "");
+                final var json = Files.readString(Path.of(args.get(2, "?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
             case "sa", "saveArchive", "archive" -> {
-                new ScriptArchiveBuilder(false).build(args.get(1).orElseThrow(), args.subArray(2));
+                new ScriptArchiveBuilder(false).build(args.getOptional(1).orElseThrow(), args.subArray(2));
             }
             case "sa1", "saveArchive1", "archive1" -> { // Compress the archive to the one row
-                new ScriptArchiveBuilder(true).build(args.get(1).orElseThrow(), args.subArray(2));
+                new ScriptArchiveBuilder(true).build(args.getOptional(1).orElseThrow(), args.subArray(2));
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -184,16 +184,16 @@ public final class PPUtils {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern(format));
     }
 
-    private static Array<String> readFiles(String file) {
-        try (Stream<String> lines = Files.lines(Path.of(file))) {
-            final var result = Array.of(lines.toArray(String[]::new));
+    private static List<String> readFiles(String file) {
+        try (var lines = Files.lines(Path.of(file))) {
+            final var result = lines.toList();
             result.stream()
                     .filter(f -> !Files.isRegularFile(Path.of(f)))
                     .findAny()
                     .ifPresent(f -> { throw new IllegalArgumentException("File '%s' was not found.".formatted(f)); });
-            return result;
+            return List.of(result);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new IllegalArgumentException(file, e);
         }
     }
 
@@ -337,15 +337,15 @@ public final class PPUtils {
         final boolean oneRowClass;
         ScriptArchiveBuilder(boolean oneRowClass) { this.oneRowClass = oneRowClass; }
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
-        public void build(String archiveFile, Array<String> files) throws IOException {
-            if (fileSourceArg.equals(files.getFirst().orElse("")) && files.size() == 2) {
-                files = readFiles(files.getItem(1));
+        public void build(String archiveFile, List<String> files) throws IOException {
+            if (fileSourceArg.equals(files.getFirst("")) && files.size() == 2) {
+                files = readFiles(files.get(1, ""));
             }
             build(Path.of(archiveFile), findInnerFiles(files));
             System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
         }
 
-        public Set<Path> findInnerFiles(Array<String> items) {
+        public Set<Path> findInnerFiles(List<String> items) {
             final var result = new TreeSet<Path>();
             items.stream()
                     .distinct()
@@ -520,9 +520,10 @@ public final class PPUtils {
 
             var classFiles = getAllClassFiles(mainClass);
             // Build a JAR file:
-            var arguments = Array.of(jarExe, "cfe", jarFile, appName).add(classFiles);
-            var process = new ProcessBuilder(arguments.toArray())
-                    .directory(new File(classFiles[0]).getParentFile())
+            var arguments = List.of(jarExe, "cfe", jarFile, appName);
+            arguments.addAll(classFiles);
+            var process = new ProcessBuilder(arguments)
+                    .directory(new File(classFiles.getFirst("")).getParentFile())
                     .start();
             var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
             var exitCode = process.waitFor();
@@ -567,8 +568,8 @@ public final class PPUtils {
             }
         }
 
-        private void deleteClasses(String... classFiles) {
-            Stream.of(classFiles).forEach(f -> {
+        private void deleteClasses(Collection<String> classFiles) {
+            classFiles.forEach(f -> {
                 try {
                     Files.delete(Path.of(f));
                 } catch (IOException e) {
@@ -581,14 +582,14 @@ public final class PPUtils {
             return System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win");
         }
 
-        private String[] getAllClassFiles(Class<?> mainClass) {
-            final var result = new ArrayList<String>();
+        private List<String> getAllClassFiles(Class<?> mainClass) {
+            final var result = List.<String>of(Collections.emptyList());
             final var suffix = ".class";
             result.add(mainClass.getSimpleName() + suffix);
             Stream.of(mainClass.getDeclaredClasses())
                     .map(c -> mainClass.getSimpleName() + '$' + c.getSimpleName() + suffix)
                     .forEach(result::add);
-            return result.toArray(String[]::new);
+            return result;
         }
 
         private void download() throws IOException, InterruptedException {
@@ -613,103 +614,56 @@ public final class PPUtils {
         }
     }
 
+    /** An extended ArrayList class */
+    public static final class List<T> extends ArrayList<T> {
 
-    /** The immutable Array wrapper with utilities (from the Ujorm framework) */
-    record Array<T>(T[] array) {
-
-        public Array<T> clone() {
-            return new Array<>(toArray());
+        private List(final Collection<T> c) {
+            super(c);
         }
 
-        /** Negative index is supported */
-        public Optional<T> get(final int i) {
-            final var j = i >= 0 ? i : array.length + i;
-            return Optional.ofNullable(j >= 0 && j < array.length ? array[j] : null);
+        public T get(final int i, final T defaultValue) {
+            final var j = i >= 0 ? i : size() + i;
+            final var result = j >= 0 && j < size()
+                    ? get(j)
+                    : defaultValue;
+            return result != null ? result : defaultValue;
         }
 
-        /** Add new items to the new Array */
-        @SuppressWarnings("unchecked")
-        public Array<T> add(final T... toAdd) {
-            final var result = Arrays.copyOf(array, array.length + toAdd.length);
-            System.arraycopy(toAdd, 0, result, array.length, toAdd.length);
-            return new Array<>(result);
+        public Optional<T> getOptional(final int i) {
+            return Optional.ofNullable(get(i, null));
         }
 
-        /** Negative index is supported */
-        public T getItem(final int i) {
-            return array[i >= 0 ? i : array.length + i];
+        public T getFirst(T defaultValue) {
+            return get(0, defaultValue);
         }
 
-        public Optional<T> getFirst() {
-            return get(0);
-        }
-
-        public Optional<T> getLast() {
-            return get(-1);
-        }
-
-        public Array<T> removeFirst() {
-            final var result = array.length > 0 ? Arrays.copyOfRange(array, 1, array.length) : array;
-            return new Array<>(result);
-        }
-
-        /** @param from Negative value is supported */
-        public Array<T> subArray(final int from) {
-            final var frm = from < 0 ? array.length + from : from;
-            final var result = Arrays.copyOfRange(array, Math.min(frm, array.length), array.length);
-            return new Array<>(result);
-        }
-
-        public List<T> toList() {
-            return List.of(array);
-        }
-
-        public Set<T> toSet() {
-            return Set.of(array);
-        }
-
-        public Stream<T> stream() {
-            return Stream.of(array);
-        }
-
-        @SuppressWarnings("unchecked")
-        public T[] toArray() {
-            final var type = array.getClass().getComponentType();
-            final var result = (T[]) java.lang.reflect.Array.newInstance(type, array.length);
-            System.arraycopy(array, 0, result, 0, array.length);
-            return result;
-        }
-
-        public boolean isEmpty() {
-            return array.length == 0;
-        }
-
-        public boolean hasLength() {
-            return array.length > 0;
-        }
-
-        public int size() {
-            return array.length;
+        public T getLast(T defaultValue) {
+            return get(-1, defaultValue);
         }
 
         @Override
-        public int hashCode() {
-            return Arrays.hashCode(array);
+        public List<T> clone() {
+            super.clone();
+            return new List<>(this);
         }
 
-        @Override
-        public boolean equals(final Object obj) {
-            return (obj instanceof Array objArray) && Arrays.equals(array, objArray.array);
+        public List<T> subArray(int from) {
+            final var size = size();
+            final var from1 = from < 0 ? size + from : from;
+            final var from2 = Math.min(from1, size);
+            return new List<>(subList(from2, size));
         }
 
-        @Override
-        public String toString() {
-            return List.of(array).toString();
+        public static <T> List<T> of(T... items) {
+            return new List<T>(Arrays.asList(items));
         }
 
-        @SuppressWarnings("unchecked")
-        public static <T> Array<T> of(T... chars) {
-            return new Array<>(chars);
+        public static <T> List<T> of(Collection<T> items) {
+            return new List<T>(items);
+        }
+
+        public boolean isFilled() {
+            return !isEmpty();
         }
     }
 

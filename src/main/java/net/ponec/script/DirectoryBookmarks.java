@@ -524,9 +524,8 @@ public final class DirectoryBookmarks {
         }
 
         public T get(final int i, final T defaultValue) {
-            final var size = size();
-            final var j = i >= 0 ? i : size + i;
-            final var result = j >= 0 && j < size
+            final var j = i >= 0 ? i : size() + i;
+            final var result = j >= 0 && j < size()
                     ? get(j)
                     : defaultValue;
             return result != null ? result : defaultValue;
@@ -537,7 +536,7 @@ public final class DirectoryBookmarks {
         }
 
         public T getLast(T defaultValue) {
-            return get(size() - 1, defaultValue);
+            return get(-1, defaultValue);
         }
 
         public static <T> List<T> of(T... items) {

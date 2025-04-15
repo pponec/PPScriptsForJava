@@ -15,8 +15,8 @@ public class Main {
 	);
 
 	public static void main(String[] arguments) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-		var args = PPUtils.Array.of(arguments);
-		var mainClassName = args.getFirst().orElse("");
+		var args = PPUtils.List.of(arguments);
+		var mainClassName = args.getFirst("");
 		var clazz = classes.stream()
 				.filter(t -> mainClassName.equals(t.getSimpleName()))
 				.findFirst()

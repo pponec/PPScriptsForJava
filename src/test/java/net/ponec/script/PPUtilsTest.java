@@ -152,7 +152,7 @@ class PPUtilsTest {
         var expected = "temp:: a:hello, b:world";
         var file = Files.createTempFile("test", ".temp");
         var charset = StandardCharsets.UTF_8;
-        var params = PPUtils.Array.of(statement, pattern, formatter, file.toAbsolutePath().toString());
+        var params = PPUtils.List.of(statement, pattern, formatter, file.toAbsolutePath().toString());
 
         var out = new ByteArrayOutputStream();
         var printer = new PrintStream(out, true, charset);
@@ -176,7 +176,7 @@ class PPUtilsTest {
         var expected = "a:hello, b:world";
         var file = Files.createTempFile("test", ".temp");
         var charset = StandardCharsets.UTF_8;
-        var params = PPUtils.Array.of(statement, pattern, formatter, file.toAbsolutePath().toString());
+        var params = PPUtils.List.of(statement, pattern, formatter, file.toAbsolutePath().toString());
 
         var out = new ByteArrayOutputStream();
         var printer = new PrintStream(out, true, charset);

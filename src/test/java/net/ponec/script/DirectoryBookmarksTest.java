@@ -27,7 +27,7 @@ public class DirectoryBookmarksTest {
     void mainRunTest() throws Exception {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
-        instance.mainRun(array("save", "/test/dev", "bin", "My", "comment"));
+        instance.mainRun(list("save", "/test/dev", "bin", "My", "comment"));
         var bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 bin\t/test/dev	# My comment
@@ -35,7 +35,7 @@ public class DirectoryBookmarksTest {
         assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
 
-        instance.mainRun(array("save", "/test/conf", "conf"));
+        instance.mainRun(list("save", "/test/conf", "conf"));
         bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 conf\t/test/conf
@@ -44,7 +44,7 @@ public class DirectoryBookmarksTest {
         assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
 
-        instance.mainRun(array("save", "/test/bin", "bin"));
+        instance.mainRun(list("save", "/test/bin", "bin"));
         bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 bin\t/test/bin
@@ -54,7 +54,7 @@ public class DirectoryBookmarksTest {
         assertEquals("", ctx.getOut());
         assertEquals("", ctx.getErr());
 
-        instance.mainRun(array("list", "bin"));
+        instance.mainRun(list("list", "bin"));
         assertEquals("/test/bin\n", ctx.getOut());
         assertEquals("", ctx.getErr());
 
@@ -65,19 +65,19 @@ public class DirectoryBookmarksTest {
         assertEquals(bookmarks, ctx.bookmarksString());
         assertEquals("", ctx.getErr());
 
-        instance.mainRun(array("version"));
+        instance.mainRun(list("version"));
         assertEquals(instance.appVersion + "\n", ctx.getOut());
 
-        instance.mainRun(array("delete", "conf"));
+        instance.mainRun(list("delete", "conf"));
         bookmarks = "bin\t/test/bin";
         assertEquals(bookmarks, ctx.bookmarksString());
         assertEquals("", ctx.getErr());
 
         var ex = assertThrows(RuntimeException.class, () ->
-                instance.mainRun(array("list", "conf")));
+                instance.mainRun(list("list", "conf")));
         assertEquals("Bookmark [conf] has no directory.", ex.getMessage());
 
-        instance.mainRun(array("list", "~"));
+        instance.mainRun(list("list", "~"));
         assertEquals(homeDir + "\n", ctx.getOut());
         assertEquals("", ctx.getErr());
 
@@ -89,7 +89,7 @@ public class DirectoryBookmarksTest {
     void getHomeTest() throws Exception {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
-        instance.mainRun(array("save", homeDir + "/test/bin", "bin", "My", "comment"));
+        instance.mainRun(list("save", homeDir + "/test/bin", "bin", "My", "comment"));
 
         var bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
@@ -98,10 +98,10 @@ public class DirectoryBookmarksTest {
         assertEquals(bookmarks, ctx.bookmarkFile());
         assertEquals("", ctx.getOut());
 
-        instance.mainRun(array("get"));
+        instance.mainRun(list("get"));
         assertEquals(homeDir + "\n", ctx.getOut());
 
-        instance.mainRun(array("save", "~", "myHome"));
+        instance.mainRun(list("save", "~", "myHome"));
         bookmarks = """
                 # DirectoryBookmarks %s (https://github.com/pponec/PPScriptsForJava)
                 myHome\t~
@@ -118,15 +118,15 @@ public class DirectoryBookmarksTest {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
 
-        instance.mainRun(array("save", homeDir, "home"));
+        instance.mainRun(list("save", homeDir, "home"));
         assertEquals(1, ctx.bookmarkStream().count());
 
 
-        instance.mainRun(array("save", "/test/%s.tmp".formatted(random.nextLong()) , "temp"));
+        instance.mainRun(list("save", "/test/%s.tmp".formatted(random.nextLong()) , "temp"));
         assertEquals(2, ctx.bookmarkStream().count());
 
 
-        instance.mainRun(array("fix"));
+        instance.mainRun(list("fix"));
         var removed = ctx.getOut();
         assertTrue(removed.startsWith("Removed: temp"));
         assertEquals(1, ctx.bookmarkStream().count());
@@ -138,13 +138,13 @@ public class DirectoryBookmarksTest {
         var instance = ctx.instance;
         var myDir = "/temp/bin/local";
 
-        instance.mainRun(array("save", myDir, "a"));
-        instance.mainRun(array("save", myDir, "b"));
-        instance.mainRun(array("save", myDir, "c"));
-        instance.mainRun(array("save", homeDir, "home"));
+        instance.mainRun(list("save", myDir, "a"));
+        instance.mainRun(list("save", myDir, "b"));
+        instance.mainRun(list("save", myDir, "c"));
+        instance.mainRun(list("save", homeDir, "home"));
 
         assertEquals(4, ctx.bookmarkStream().count());
-        instance.mainRun(array("bookmarks", myDir));
+        instance.mainRun(list("bookmarks", myDir));
         var output = ctx.getOutLines().collect(Collectors.joining(","));
         assertEquals("a,b,c", output);
     }
@@ -155,15 +155,15 @@ public class DirectoryBookmarksTest {
         var ctx = DirBookContext.of();
         var instance = ctx.instance;
         var myDir = "/temp/bin";
-        instance.mainRun(array("save", myDir, "bin"));
+        instance.mainRun(list("save", myDir, "bin"));
         assertEquals(1, ctx.bookmarkStream().count());
 
-        instance.mainRun(array("list", "bin/subdirectory/abc"));
+        instance.mainRun(list("list", "bin/subdirectory/abc"));
         var subdir = ctx.getOut();
         var expected = "/temp/bin/subdirectory/abc\n";
         assertEquals(expected, subdir);
 
-        instance.mainRun(array("list", "bin\\subdirectory\\abc"));
+        instance.mainRun(list("list", "bin\\subdirectory\\abc"));
         subdir = ctx.getOut();
         expected = "/temp/bin\\subdirectory\\abc\n";
         assertEquals(expected, subdir);
@@ -171,7 +171,7 @@ public class DirectoryBookmarksTest {
 
     // =========== UTILS ===========
 
-    private DirectoryBookmarks.List<String> array(String... args) {
+    private DirectoryBookmarks.List<String> list(String... args) {
         return DirectoryBookmarks.List.of(args);
     }
 
