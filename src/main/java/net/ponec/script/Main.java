@@ -22,7 +22,7 @@ public class Main {
 				.findFirst()
 				.orElseThrow(Main::illegalArgument);
 		var mainMethod = clazz.getMethod("main", String[].class);
-		var reflectionArgs = new Object[] { args.subArray(1).toArray() };
+		var reflectionArgs = new Object[] { args.subList(1).toArray() };
 		mainMethod.invoke(null, reflectionArgs);
 	}
 

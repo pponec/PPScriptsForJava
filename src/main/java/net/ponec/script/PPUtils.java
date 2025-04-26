@@ -98,7 +98,7 @@ public final class PPUtils {
             case "find" -> { // Example: find [--printfileonly] public.+interface java$
                 final var file = args.getOptional(1).map(Path::of).get();
                 final var fileOnly = args.get(2, "").equals("--printfileonly");
-                final var subArgs = args.subArray(2 + (fileOnly ? 1 : 0 ));
+                final var subArgs = args.subList(2 + (fileOnly ? 1 : 0 ));
                 final var bodyPattern = subArgs.getOptional(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.getOptional(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
@@ -119,7 +119,7 @@ public final class PPUtils {
                     final var finder = new Finder(pathComparator(), bodyPattern, bodyFormat, null, enforcedLinux, out);
                     final var files = fileSourceArg.equals(args.get(3, "")) && args.size() > 4
                             ? readFiles(args.get(4, ""))
-                            : args.subArray(3);
+                            : args.subList(3);
                     files.stream().forEach(file -> finder.grep(Path.of(file), true));
                 }
             }
@@ -151,10 +151,10 @@ public final class PPUtils {
                 out.println(Json.of(json).get(key).orElse(""));
             }
             case "sa", "saveArchive", "archive" -> {
-                new ScriptArchiveBuilder(false).build(args.getOptional(1).orElseThrow(), args.subArray(2));
+                new ScriptArchiveBuilder(false).build(args.getOptional(1).orElseThrow(), args.subList(2));
             }
             case "sa1", "saveArchive1", "archive1" -> { // Compress the archive to the one row
-                new ScriptArchiveBuilder(true).build(args.getOptional(1).orElseThrow(), args.subArray(2));
+                new ScriptArchiveBuilder(true).build(args.getOptional(1).orElseThrow(), args.subList(2));
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -647,7 +647,7 @@ public final class PPUtils {
             return new List<>(this);
         }
 
-        public List<T> subArray(int from) {
+        public List<T> subList(int from) {
             final var size = size();
             final var from1 = from < 0 ? size + from : from;
             final var from2 = Math.min(from1, size);

@@ -48,8 +48,8 @@ class ListTest {
 
 
     @Test
-    void subArray() {
-        List<Character> trim = list.clone().subArray(3);
+    void subList() {
+        List<Character> trim = list.clone().subList(3);
         assertEquals(2, trim.size());
         assertEquals('D', trim.get(0, 'C'));
     }
