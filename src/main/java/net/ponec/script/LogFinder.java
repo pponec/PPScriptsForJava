@@ -1,6 +1,7 @@
 package net.ponec.script;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -21,19 +22,37 @@ import java.util.zip.*;
  * and following lines for better context.
  * <p>
  * The class handles plain text files as well as ZIP files without recursion into subdirectories.
+ *
+ * @version 2025-04-26
  */
 public class LogFinder {
 
-    private static final int PREVIOUS_LINES = 3;
-    private static final int FOLLOWING_LINES = 5;
+    private static final int BEFORE_LINES = 3;
+    private static final int AFTER_LINES = 100;
 
-    public static void main(String[] args) throws IOException {
-        new LogFinder()._main(List.of(args));
+    private final Pattern textFiles = Pattern.compile("\\.(txt|log|csv|md)$");
+    private final Charset charset = StandardCharsets.UTF_8;
+    private final PrintStream out;
+    private final int beforeLines;
+    private final int afterLines;
+
+    LogFinder(final PrintStream out) {
+        this(out, BEFORE_LINES, AFTER_LINES);
     }
 
-    public void _main(List<String> args) throws IOException {
+    LogFinder(final PrintStream out, int beforeLines, int afterLines) {
+        this.out = out;
+        this.beforeLines = beforeLines;
+        this.afterLines = afterLines;
+    }
+
+    public static void main(String[] args) throws IOException {
+        new LogFinder(System.out).run(List.of(args));
+    }
+
+    public void run(List<String> args) throws IOException {
         if (args.isEmpty()) {
-            System.out.printf("Usage: java %s.java [regexpr] [dir_or_files]", getClass().getSimpleName());
+            out.printf("Usage: java %s.java [regexpr] [dir_or_files]", getClass().getSimpleName());
             System.exit(1);
         }
 
@@ -59,55 +78,42 @@ public class LogFinder {
 
     void processFile(Path file, Pattern pattern) throws IOException {
         var filename = file.getFileName().toString().toLowerCase();
-
-        if (filename.endsWith(".zip")) {
-            try (var zip = new ZipInputStream(Files.newInputStream(file))) {
-                ZipEntry entry;
-                while ((entry = zip.getNextEntry()) != null) {
-                    if (!entry.isDirectory() && entry.getName().matches(".*\\.(txt|log|csv|md)")) {
-                        processTextStream(zip, entry.getName(), pattern);
-                    }
+        if (filename.endsWith(".zip")) try (var zip = new ZipInputStream(Files.newInputStream(file))) {
+            var entry = (ZipEntry) null;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (!entry.isDirectory() && textFiles.matcher(entry.getName()).find()) {
+                    var reader = new BufferedReader(new InputStreamReader(zip, charset));
+                    processTextReader(reader, entry.getName(), pattern);
                 }
             }
-        } else {
-            if (filename.matches(".*\\.(txt|log|csv|md)")) {
-                try (var reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-                    processTextReader(reader, file.toString(), pattern);
-                }
+        } else if (textFiles.matcher(filename).find()) {
+            try (var reader = Files.newBufferedReader(file, charset)) {
+                processTextReader(reader, file.toString(), pattern);
             }
-        }
-    }
-
-    void processTextStream(InputStream stream, String name, Pattern pattern) throws IOException {
-        try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            processTextReader(reader, name, pattern);
         }
     }
 
     void processTextReader(BufferedReader reader, String sourceName, Pattern pattern) throws IOException {
-        var buffer = new CircularBuffer(PREVIOUS_LINES);
-        var lines = new ArrayList<String>();
+        var buffer = new CircularBuffer(beforeLines);
         var line = "";
+        var afterCounter = 0;
+        var lineCounter = 0;
+        var eventCounter = 0;
 
         while ((line = reader.readLine()) != null) {
-            lines.add(line);
-        }
-
-        for (var i = 0; i < lines.size(); i++) {
-            var current = lines.get(i);
-            buffer.add(current);
-
-            var matcher = pattern.matcher(current);
-            if (matcher.find()) {
-                System.out.println("--- " + sourceName + " ---");
-                for (var s : buffer.getContents()) {
-                    System.out.println(s);
-                }
-                for (var j = i + 1; j <= i + FOLLOWING_LINES && j < lines.size(); j++) {
-                    System.out.println(lines.get(j));
-                }
-                System.out.println();
+            lineCounter++;
+            if (pattern.matcher(line).find()) {
+                var firstLine = lineCounter - buffer.size();
+                if (eventCounter++ > 0) out.println();
+                out.printf("### %s:%s #%s%n", sourceName, firstLine, eventCounter);
+                out.print(buffer.toStringLine());
+                out.printf("(%s:%s) %s%n", sourceName, lineCounter, line);
                 buffer.clear();
+                afterCounter = this.afterLines;
+            } else if (afterCounter-- > 0) {
+                out.println(line);
+            } else {
+                buffer.add(line);
             }
         }
     }
@@ -117,6 +123,7 @@ public class LogFinder {
         private final String[] data;
         private int index = 0;
         private int size = 0;
+        private String newLine = "\n";
 
         public CircularBuffer(int capacity) {
             data = new String[capacity];
@@ -145,8 +152,18 @@ public class LogFinder {
             size = 0;
         }
 
+        public int size() {
+            return size;
+        }
+
         public String toString() {
-            return String.join("\n", getContents());
+            return String.join(newLine, getContents());
+        }
+
+        public String toStringLine() {
+            return size() > 0
+                    ? this + newLine
+                    : "";
         }
     }
 
