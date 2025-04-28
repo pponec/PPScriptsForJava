@@ -37,7 +37,7 @@ public class LogFinderTest {
                 ### /tmp/test.txt:2 #1
                 Row two
                 Row three
-                (/tmp/test.txt:4) ERROR is here
+                [/tmp/test.txt:4] ERROR is here
                 Row five
                 Row six
                 """;
@@ -50,14 +50,14 @@ public class LogFinderTest {
 
     @Test
     public void run_more() throws IOException {
-        var regexp = "ERROR";
+        var regexp = "";
         var body = """
                 Row one
                 ERROR A is here
                 Row three
                 Row four
                 Row five
-                ERROR B is here
+                SEVERE B is here
                 Row seven
                 Row eight
                 """;
@@ -71,12 +71,10 @@ public class LogFinderTest {
         var expected = """
                 ### /tmp/test.txt:1 #1
                 Row one
-                (/tmp/test.txt:2) ERROR A is here
+                [/tmp/test.txt:2] ERROR A is here
                 Row three
-                
-                ### /tmp/test.txt:5 #2
                 Row five
-                (/tmp/test.txt:6) ERROR B is here
+                [/tmp/test.txt:6] SEVERE B is here
                 Row seven
                 """;
         var result = removeNumbers(out.toString());
@@ -107,13 +105,11 @@ public class LogFinderTest {
         var expected = """
                 ### /tmp/test.txt:1 #1
                 Row one
-                (/tmp/test.txt:2) ERROR A is here
+                [/tmp/test.txt:2] ERROR A is here
                 Row three
                 Row four
                 Row five
-                
-                ### /tmp/test.txt:6 #2
-                (/tmp/test.txt:6) ERROR B is here
+                [/tmp/test.txt:6] ERROR B is here
                 Row seven
                 Row eight
                 """;
@@ -133,21 +129,17 @@ public class LogFinderTest {
         var expected = """
                 ### file1.txt:1 #1
                 Row one
-                (file1.txt:2) ERROR A is here
+                [file1.txt:2] ERROR A is here
                 Row three
-                
-                ### file1.txt:5 #2
                 Row five
-                (file1.txt:6) ERROR B is here
+                [file1.txt:6] ERROR B is here
                 Row seven
                 ### file2.txt:1 #1
                 Row one
-                (file2.txt:2) ERROR A is here
+                [file2.txt:2] ERROR A is here
                 Row three
-                
-                ### file2.txt:5 #2
                 Row five
-                (file2.txt:6) ERROR B is here
+                [file2.txt:6] ERROR B is here
                 Row seven
                 """;
         var result = removeNumbers(out.toString());

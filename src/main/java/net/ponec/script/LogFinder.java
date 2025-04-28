@@ -23,10 +23,13 @@ import java.util.zip.*;
  * <p>
  * The class handles plain text files as well as ZIP files without recursion into subdirectories.
  *
- * @version 2025-04-26
+ * See the <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/LogFinder.java">source</a>.
+ *
+ * @version 2025-04-28
  */
 public class LogFinder {
 
+    private static final Pattern DEFAULT_REGEXP = Pattern.compile("(ERROR|SEVERE)");
     private static final int BEFORE_LINES = 3;
     private static final int AFTER_LINES = 100;
 
@@ -35,6 +38,7 @@ public class LogFinder {
     private final PrintStream out;
     private final int beforeLines;
     private final int afterLines;
+    private String lastSource = "";
 
     LogFinder(final PrintStream out) {
         this(out, BEFORE_LINES, AFTER_LINES);
@@ -56,7 +60,8 @@ public class LogFinder {
             System.exit(1);
         }
 
-        var regex = Pattern.compile(args.getFirst("ERROR"));
+        var regtx = args.getFirst("");
+        var regex = regtx.isEmpty() ? DEFAULT_REGEXP : Pattern.compile(args.get(0));
         var paths = args.size() > 1
                 ? args.subList(1).stream().map(Paths::get).toList()
                 : List.of(Paths.get("."));
@@ -104,10 +109,13 @@ public class LogFinder {
             lineCounter++;
             if (pattern.matcher(line).find()) {
                 var firstLine = lineCounter - buffer.size();
-                if (eventCounter++ > 0) out.println();
-                out.printf("### %s:%s #%s%n", sourceName, firstLine, eventCounter);
+                if (!lastSource.equals(sourceName)) {
+                    lastSource = sourceName;
+                    if (eventCounter++ > 0) out.println();
+                    out.printf("### %s:%s #%s%n", sourceName, firstLine, eventCounter);
+                }
                 out.print(buffer.toStringLine());
-                out.printf("(%s:%s) %s%n", sourceName, lineCounter, line);
+                out.printf("[%s:%s] %s%n", sourceName, lineCounter, line);
                 buffer.clear();
                 afterCounter = this.afterLines;
             } else if (afterCounter-- > 0) {
