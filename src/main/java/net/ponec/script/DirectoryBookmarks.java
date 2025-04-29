@@ -517,6 +517,7 @@ public final class DirectoryBookmarks {
     }
 
     /** An extended ArrayList class */
+    @SuppressWarnings({"unchecked", "serial"}) // Due obsolete Java 17
     public static final class List<T> extends ArrayList<T> {
 
         private List(final Collection<T> c) {
