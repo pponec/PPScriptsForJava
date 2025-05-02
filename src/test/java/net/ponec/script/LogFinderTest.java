@@ -34,10 +34,10 @@ public class LogFinderTest {
         var lineCount = 2;
         new LogFinder(out, lineCount, lineCount).run(list(regexp, testFile.toString()));
         var expected = """
-                ### /tmp/test.txt:2 #1
+                ### test.txt:2 #1
                 Row two
                 Row three
-                [/tmp/test.txt:4] ERROR is here
+                >>>test.txt:4: ERROR is here
                 Row five
                 Row six
                 """;
@@ -69,13 +69,13 @@ public class LogFinderTest {
         var lineCount = 1;
         new LogFinder(out, lineCount, lineCount).run(list(regexp, testFile.toString()));
         var expected = """
-                ### /tmp/test.txt:1 #1
-                Row one
-                [/tmp/test.txt:2] ERROR A is here
-                Row three
-                Row five
-                [/tmp/test.txt:6] SEVERE B is here
-                Row seven
+            ### test.txt:1 #1
+            Row one
+            >>>test.txt:2: ERROR A is here
+            Row three
+            Row five
+            >>>test.txt:6: SEVERE B is here
+            Row seven
                 """;
         var result = removeNumbers(out.toString());
         assertEquals(expected, result);
@@ -103,13 +103,13 @@ public class LogFinderTest {
 
         new LogFinder(out, 9, 99).run(list(regexp, testFile.toString()));
         var expected = """
-                ### /tmp/test.txt:1 #1
+                ### test.txt:1 #1
                 Row one
-                [/tmp/test.txt:2] ERROR A is here
+                >>>test.txt:2: ERROR A is here
                 Row three
                 Row four
                 Row five
-                [/tmp/test.txt:6] ERROR B is here
+                >>>test.txt:6: ERROR B is here
                 Row seven
                 Row eight
                 """;
@@ -127,20 +127,20 @@ public class LogFinderTest {
         var lineCount = 1;
         new LogFinder(out, lineCount, lineCount).run(list(regexp, testFile.toString()));
         var expected = """
-                ### file1.txt:1 #1
-                Row one
-                [file1.txt:2] ERROR A is here
-                Row three
-                Row five
-                [file1.txt:6] ERROR B is here
-                Row seven
-                ### file2.txt:1 #1
-                Row one
-                [file2.txt:2] ERROR A is here
-                Row three
-                Row five
-                [file2.txt:6] ERROR B is here
-                Row seven
+            ### file1.txt:1 #1
+            Row one
+            >>>file1.txt:2: ERROR A is here
+            Row three
+            Row five
+            >>>file1.txt:6: ERROR B is here
+            Row seven
+            ### file2.txt:1 #1
+            Row one
+            >>>file2.txt:2: ERROR A is here
+            Row three
+            Row five
+            >>>file2.txt:6: ERROR B is here
+            Row seven
                 """;
         var result = removeNumbers(out.toString());
         assertEquals(expected, result);

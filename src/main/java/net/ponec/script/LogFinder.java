@@ -15,7 +15,7 @@ import java.util.zip.*;
  * If no path is specified, the current working directory is used by default.
  * The program processes:
  * <ul>
- *   <li>Text files (extensions: txt, log, csv, md)</li>
+ *   <li>Text files (extensions: log, txt, csv, md, yaml, xml, properties, java)</li>
  *   <li>Text files contained within ZIP archives</li>
  * </ul>
  * When a matching line is found, it prints a configurable number of preceding
@@ -23,17 +23,19 @@ import java.util.zip.*;
  * <p>
  * The class handles plain text files as well as ZIP files without recursion into subdirectories.
  *
+ * Try run a self test: {@code java LogFinder.java "" . }
+ *
  * See the <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/LogFinder.java">source</a>.
  *
- * @version 2025-04-28
+ * @version 2025-05-01
  */
 public class LogFinder {
 
     private static final Pattern DEFAULT_REGEXP = Pattern.compile("(ERROR|SEVERE)");
     private static final int BEFORE_LINES = 3;
-    private static final int AFTER_LINES = 100;
+    private static final int AFTER_LINES = 10;
 
-    private final Pattern textFiles = Pattern.compile("\\.(txt|log|csv|md)$");
+    private final Pattern textFiles = Pattern.compile("\\.(log|txt|csv|md|yaml|xml|properties|java)$");
     private final Charset charset = StandardCharsets.UTF_8;
     private final PrintStream out;
     private final int beforeLines;
@@ -93,7 +95,7 @@ public class LogFinder {
             }
         } else if (textFiles.matcher(filename).find()) {
             try (var reader = Files.newBufferedReader(file, charset)) {
-                processTextReader(reader, file.toString(), pattern);
+                processTextReader(reader, file.getFileName().toString(), pattern);
             }
         }
     }
@@ -115,7 +117,7 @@ public class LogFinder {
                     out.printf("### %s:%s #%s%n", sourceName, firstLine, eventCounter);
                 }
                 out.print(buffer.toStringLine());
-                out.printf("[%s:%s] %s%n", sourceName, lineCounter, line);
+                out.printf(">>>%s:%s: %s%n", sourceName, lineCounter, line.trim());
                 buffer.clear();
                 afterCounter = this.afterLines;
             } else if (afterCounter-- > 0) {
@@ -176,7 +178,7 @@ public class LogFinder {
     }
 
     /** An extended ArrayList class */
-    @SuppressWarnings({"unchecked", "serial"}) // Due obsolete Java 17
+    @SuppressWarnings({"unchecked", "serial"}) // Due an obsolete Java 17
     public static final class List<T> extends ArrayList<T> {
 
         private List(final Collection<T> c) {
