@@ -144,6 +144,32 @@ class PPUtilsTest {
     }
 
     @Test
+    void archive_regexp() throws Exception {
+        var archive = Files.createTempFile("Archiv", ".java");
+        var file1 =  Files.createTempFile("Test1_", ".txt");
+        var file2 =  Files.createTempFile("Test2_", ".txt");
+        var dir = file2.getParent();
+
+        try {
+            Files.writeString(file1, "Hallo World");
+            Files.writeString(file2, IntStream.range(0, 1000).mapToObj(i -> ".").collect(Collectors.joining()));
+            var regexp = "Test[12]_.*\\.txt";
+            // PPUtils.java archive Archive.java [dir] --regexp regularExpression
+            var params = PPUtils.List.of("archive", archive.toString(), dir.toString(), "--regexp", regexp, regexp);
+            new PPUtils(System.out).mainRun(params);
+
+            Assertions.assertTrue(Files.isReadable(archive));
+            var javaClass = Files.readString(archive);
+            Assertions.assertTrue(javaClass.contains("/" + file1.getFileName()));
+            Assertions.assertTrue(javaClass.contains("/" + file2.getFileName()));
+            Assertions.assertTrue(javaClass.contains("eJzzSMzJyVcIzy/KSQEAF+MEGQ=="));
+            Assertions.assertTrue(javaClass.contains("eJzT0xsFo2AUDHcAAGYRs7E="));
+        } finally {
+            Stream.of(archive, file1, file2).forEach(f -> deleteFile(f));
+        }
+    }
+
+    @Test
     void grepf_withFile() throws Exception {
         var statement = "grepf";
         var line = "a-hello-world-c";

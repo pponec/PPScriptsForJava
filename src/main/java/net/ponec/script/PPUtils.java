@@ -25,6 +25,7 @@ import java.net.URLDecoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +56,7 @@ import java.util.zip.DeflaterOutputStream;
  *    <li>{@code java PPUtils.java key json } - Get a value by the (composite) key, for example: {@code "a.b.c"}</li>
  *    <li>{@code java PPUtils.java archive  Archive.java File1 File2 Dir1 Dir2 } - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
  *    <li>{@code java PPUtils.java archive  Archive.java --file FileList.txt } - Creates a self-extracting archive for all files from the file list.</li>
+ *    <li>{@code java PPUtils.java archive  Archive.java [dir] --regexp regularExpression } - Creates a self-extracting archive in Java class source code format. Recursive directories are supported.</li>
  *    <li>{@code java PPUtils.java archive1 Archive.java File1 File2 File3 } - Compress the archive to the one row. . Recursive directories are supported.</li>
  * </ul>
  * For more information see the <a href="https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md">GitHub page</a>.
@@ -63,7 +65,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.7";
+    private final String appVersion = "1.2.8";
 
     private final Class<?> mainClass = getClass();
 
@@ -71,9 +73,15 @@ public final class PPUtils {
 
     private final String dateIsoFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
+    private static final Charset utf8 = StandardCharsets.UTF_8;
+
     private static final String grepSeparator = ":: ";
 
+    private static final String printfileonly = "--printfileonly";
+
     private static final String fileSourceArg = "--file";
+
+    private static final String fileRegexp = "--regexp";
 
     private static final boolean sortDirectoryLast = true;
 
@@ -95,15 +103,15 @@ public final class PPUtils {
         }
         var statement = args.getFirst("");
         switch (statement) {
-            case "find" -> { // Example: find [--printfileonly] public.+interface java$
-                final var file = args.getOptional(1).map(Path::of).get();
-                final var fileOnly = args.get(2, "").equals("--printfileonly");
+            case "find" -> { // Example: find . [--printfileonly] public.+interface java$
+                final var dir = args.getOptional(1).map(Path::of).get();
+                final var fileOnly = args.get(2, "").equals(printfileonly);
                 final var subArgs = args.subList(2 + (fileOnly ? 1 : 0 ));
                 final var bodyPattern = subArgs.getOptional(-2).map(Pattern::compile).orElse(null);
                 final var filePattern = subArgs.getOptional(-1).map(Pattern::compile).orElseThrow(() ->
                         new IllegalArgumentException("No file pattern"));
                 new Finder(pathComparator(), bodyPattern, "", filePattern, enforcedLinux, out)
-                        .findFiles(file, !fileOnly && bodyPattern != null);
+                        .findFiles(dir, !fileOnly && bodyPattern != null);
             }
             case "grep" -> {
                 if (args.size() > 2) {
@@ -150,11 +158,25 @@ public final class PPUtils {
                 final var json = Files.readString(Path.of(args.get(2, "?")));
                 out.println(Json.of(json).get(key).orElse(""));
             }
-            case "sa", "saveArchive", "archive" -> {
-                new ScriptArchiveBuilder(false).build(args.getOptional(1).orElseThrow(), args.subList(2));
-            }
-            case "sa1", "saveArchive1", "archive1" -> { // Compress the archive to the one row
-                new ScriptArchiveBuilder(true).build(args.getOptional(1).orElseThrow(), args.subList(2));
+            case "sa", "saveArchive", "archive",
+                 "sa1","saveArchive1","archive1" -> {
+                var oneRowClass = statement.endsWith("1");
+                var files = args.subList(2);
+                var regexep1 = files.get(0, "").equals(fileRegexp);
+                var regexep2 = files.get(1, "").equals(fileRegexp);
+
+                if (regexep1 || regexep2) {
+                    var dir = regexep2 ? files.get(0) : ".";
+                    var beg = regexep2 ? 2 : 1;
+                    var out = new ByteArrayOutputStream();
+                    var printer = new PrintStream(out, true, utf8);
+                    var ppUtils = new PPUtils(printer);
+                    for (int i = beg; i < files.size(); i++) {
+                        ppUtils.mainRun(List.of("find", dir, printfileonly, files.get(i)));
+                    }
+                    files = List.of(out.toString(utf8).lines().toList());
+                }
+                new ScriptArchiveBuilder(oneRowClass).build(args.getOptional(1).orElseThrow(), files);
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -273,7 +295,7 @@ public final class PPUtils {
 
         public boolean grep(Path file, boolean printLine) {
             try (final var validLineStream = Files
-                    .lines(file, StandardCharsets.UTF_8)
+                    .lines(file, utf8)
                     .filter(line -> bodyPattern == null || bodyPattern.matcher(line).find())
             ) {
                 if (printLine) {
@@ -421,7 +443,7 @@ public final class PPUtils {
                     }
                     """.formatted(cFile, homeUrl, LocalDateTime.now(), cFile, splitSequence, "%s")
                     .split(splitSequence);
-            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, StandardCharsets.UTF_8)) {
+            try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, utf8)) {
                 print(classBody[0], os);
                 for (var file : files) {
                     print("\n\t\t, new File(\"", os);
@@ -466,7 +488,7 @@ public final class PPUtils {
         }
 
         static final class SplitOutputStream extends FilterOutputStream {
-            final byte[] separator = "\",\"".getBytes(StandardCharsets.UTF_8);
+            final byte[] separator = "\",\"".getBytes(utf8);
             /* https://stackoverflow.com/questions/77417411/why-is-the-maximum-string-literal-length-in-java-65534 */
             final int group = 65534;
             private int counter = 0;
@@ -525,7 +547,7 @@ public final class PPUtils {
             var process = new ProcessBuilder(arguments)
                     .directory(new File(classFiles.getFirst("")).getParentFile())
                     .start();
-            var err = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            var err = new String(process.getErrorStream().readAllBytes(), utf8);
             var exitCode = process.waitFor();
             if (exitCode != 0) {
                 throw new IllegalStateException(err);
@@ -562,7 +584,7 @@ public final class PPUtils {
                 } else {
                     result = location.getPath();
                 }
-                return URLDecoder.decode(result, StandardCharsets.UTF_8);
+                return URLDecoder.decode(result, utf8);
             } catch (Exception e) {
                 return "%s.%s".formatted(appName, "java");
             }
