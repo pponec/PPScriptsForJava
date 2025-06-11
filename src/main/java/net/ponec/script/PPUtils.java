@@ -65,7 +65,7 @@ public final class PPUtils {
 
     private final String appName = getClass().getSimpleName();
 
-    private final String appVersion = "1.2.8";
+    private final String appVersion = "1.3.0";
 
     private final Class<?> mainClass = getClass();
 
@@ -176,7 +176,7 @@ public final class PPUtils {
                     }
                     files = List.of(out.toString(utf8).lines().toList());
                 }
-                new ScriptArchiveBuilder(oneRowClass).build(args.getOptional(1).orElseThrow(), files);
+                new ScriptArchiveBuilder(oneRowClass, out).build(args.getOptional(1).orElseThrow(), files);
             }
             case "compile" -> {
                 new Utilities().compile();
@@ -356,15 +356,16 @@ public final class PPUtils {
     }
     /** Build a script archiv */
     public static final class ScriptArchiveBuilder {
+        final PrintStream out;
         final boolean oneRowClass;
-        ScriptArchiveBuilder(boolean oneRowClass) { this.oneRowClass = oneRowClass; }
+        ScriptArchiveBuilder(boolean oneRowClass, PrintStream out) { this.oneRowClass = oneRowClass; this.out = out; }
         private final String homeUrl = "https://github.com/pponec/PPScriptsForJava/blob/main/docs/PPUtils.md";
         public void build(String archiveFile, List<String> files) throws IOException {
             if (fileSourceArg.equals(files.getFirst("")) && files.size() == 2) {
                 files = readFiles(files.get(1, ""));
             }
             build(Path.of(archiveFile), findInnerFiles(files));
-            System.out.printf("%s.%s: archive created: %s%n", PPUtils.class.getSimpleName(), getClass().getSimpleName(), archiveFile);
+            System.out.printf("%s: The archive was created in file: %s%n", PPUtils.class.getSimpleName(), archiveFile);
         }
 
         public Set<Path> findInnerFiles(List<String> items) {
@@ -446,6 +447,7 @@ public final class PPUtils {
             try (var os = new PrintStream(new BufferedOutputStream(Files.newOutputStream(javaArchiveFile)), false, utf8)) {
                 print(classBody[0], os);
                 for (var file : files) {
+                    this.out.printf("  add %s%n", file);
                     print("\n\t\t, new File(\"", os);
                     print(file.toString().replace('\\', '/'), os);
                     print("\", \"", os);

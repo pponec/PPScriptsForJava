@@ -122,7 +122,7 @@ class PPUtilsTest {
 
     @Test
     void archive() throws IOException {
-        var compressor = new PPUtils.ScriptArchiveBuilder(false);
+        var compressor = new PPUtils.ScriptArchiveBuilder(false, System.out);
         var archive = Files.createTempFile("Archiv", ".java");
         var file1 =  Files.createTempFile("Test1", ".txt");
         var file2 =  Files.createTempFile("Test2", ".txt");
