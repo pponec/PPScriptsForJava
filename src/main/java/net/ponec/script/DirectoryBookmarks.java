@@ -153,18 +153,18 @@ public final class DirectoryBookmarks {
     private void printHelpAndExit(int status) {
         var out = status == 0 ? this.out : this.err;
         var isJar = utils.isJar();
-        var javaExe = "java %s%s.%s".formatted(
+        var executable = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [slgdrbfuc] directory bookmark optionalComment%n", javaExe);
+        out.printf("Usage: %s [slgdrbfuc] directory bookmark optionalComment%n", executable);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
-            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
+            out.printf("Integrate the script to Windows: %s i >> %s", executable, initFile);
         } else {
             var initFile = "~/.bashrc";
-            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
+            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", executable, initFile, initFile);
         }
         exit(status);
     }

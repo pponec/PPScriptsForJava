@@ -111,6 +111,9 @@ public final class DirectoryBookmarksSimplified {
                 var dir = args.get(1, currentDir);
                 printAllBookmarksOfDirectory(dir);
             }
+            case "i", "install"-> {
+                printInstall();
+            }
             case "f", "fix"-> {
                 fixMarksOfMissingDirectories();
             }
@@ -135,19 +138,19 @@ public final class DirectoryBookmarksSimplified {
      */
     private void printHelpAndExit(int status) {
         var out = status == 0 ? this.out : this.err;
-        var isJar = utils.isJar();
-        var javaExe = "java %s%s.%s".formatted(
+        var isJar = false;
+        var executable = "java %s%s.%s".formatted(
                 isJar ? "-jar " : "",
                 appName,
                 isJar ? "jar" : "java");
         out.printf("%s %s (%s)%n", appName, appVersion, homePage);
-        out.printf("Usage: %s [slgdrbfuc] directory bookmark optionalComment%n", javaExe);
+        out.printf("Usage: %s [slgdrbfuc] directory bookmark optionalComment%n", executable);
         if (isSystemWindows) {
             var initFile = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1";
-            out.printf("Integrate the script to Windows: %s i >> %s", javaExe, initFile);
+            out.printf("Integrate the script to Windows: %s i >> %s", executable, initFile);
         } else {
             var initFile = "~/.bashrc";
-            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", javaExe, initFile, initFile);
+            out.printf("Integrate the script to Ubuntu: %s i >> %s && . %s%n", executable, initFile, initFile);
         }
         exit(status);
     }
@@ -331,6 +334,32 @@ public final class DirectoryBookmarksSimplified {
         }
     }
 
+    private void printInstall() {
+        var engine = "python";
+        if (isSystemWindows) {
+            var exe = "\"%s\"".formatted(engine);
+            var msg = String.join(System.lineSeparator(), ""
+                    , "# Shortcuts for %s v%s utilities - for the PowerShell:".formatted(appName, appVersion)
+                    , "function directoryBookmarks { & %s $args }".formatted(exe)
+                    , "function cdf { Set-Location -Path $(directoryBookmarks -g $args) }"
+                    , "function sdf { directoryBookmarks s $($PWD.Path) @args }"
+                    , "function ldf { directoryBookmarks l $args }"
+                    , "function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }");
+            out.println(msg);
+        } else {
+            engine = "python3";
+            var exe = "\"%s\"".formatted(engine);
+            var msg = String.join(System.lineSeparator(), ""
+                    , "# Shortcuts for %s v%s utilities - for the Bash:".formatted(appName, appVersion)
+                    , "alias directoryBookmarks='%s'".formatted(exe)
+                    , "cdf() { cd \"$(directoryBookmarks g $1)\"; }"
+                    , "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }" // Ready for symbolic links
+                    , "ldf() { directoryBookmarks l \"$1\"; }"
+                    , "cpf() { argCount=$#; cp ${@:1:$((argCount-1))} \"$(ldf ${!argCount})\"; }");
+            out.println(msg);
+        }
+    }
+
     /** Convert a directory text to the store format or back */
     private String convertDir(boolean toStoreFormat, String dir, boolean isSystemWindows) {
         final var homeDirMarkEnabled = !homeDirMark.isEmpty();
@@ -357,10 +386,6 @@ public final class DirectoryBookmarksSimplified {
         private String getScriptDir() {
             var exePath = getPathOfRunningApplication();
             return exePath.substring(0, exePath.lastIndexOf(appName) - 1);
-        }
-
-        private boolean isJar() {
-            return getPathOfRunningApplication().toLowerCase(Locale.ENGLISH).endsWith(".jar");
         }
 
         /**

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # Licence: Apache License 2.0, https://github.com/pponec/
 # Converted from Java 17 to Python 3 by ChatGPT v5
+# Install Python for Windows: winget install --id Python.Python.3.13
 
 import os
 import sys
@@ -12,7 +13,7 @@ from pathlib import Path
 from urllib.parse import unquote
 from typing import List as TypedList
 
-class DirectoryBookmarksSimplified:
+class DirectoryBookmarks:
     USER_HOME = str(Path.home())
 
     def __init__(self, store_name: Path, out=sys.stdout, err=sys.stderr,
@@ -40,8 +41,8 @@ class DirectoryBookmarksSimplified:
         enforced_linux = (args[0] == "linux") if args else False
         if enforced_linux:
             args = args[1:]
-        app = DirectoryBookmarksSimplified(
-            Path(DirectoryBookmarksSimplified.USER_HOME) / ".directory-bookmarks.csv",
+        app = DirectoryBookmarks(
+            Path(DirectoryBookmarks.USER_HOME) / ".directory-bookmarks.csv",
             sys.stdout, sys.stderr, enforced_linux, False
         )
         app.main_run(args)
@@ -81,6 +82,8 @@ class DirectoryBookmarksSimplified:
         elif cmd in ("b", "bookmarks"):
             dir_val = args[1] if len(args) > 1 else self.current_dir
             self.print_all_bookmarks_of_directory(dir_val)
+        elif statement in ("i", "install"):
+            self.print_install()
         elif cmd in ("f", "fix"):
             self.fix_marks_of_missing_directories()
         elif cmd in ("v", "version"):
@@ -95,15 +98,16 @@ class DirectoryBookmarksSimplified:
 
     def print_help_and_exit(self, status: int):
         out = self.out if status == 0 else self.err
-        java_exe = f"java {self.app_name}.java"
+        executable = f"python {self.app_name}.py"
         print(f"{self.app_name} {self.app_version} ({self.home_page})", file=out)
-        print(f"Usage: {java_exe} [slgdrbfuc] directory bookmark optionalComment", file=out)
+        print(f"Usage: {executable} [slgdrbfuc] directory bookmark optionalComment", file=out)
         if self.is_system_windows:
             init_file = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1"
-            print(f"Integrate the script to Windows: {java_exe} i >> {init_file}", file=out)
+            print(f"Integrate the script to Windows: {executable} i >> {init_file}", file=out)
         else:
+            executable = f"python3 {self.app_name}.py"
             init_file = "~/.bashrc"
-            print(f"Integrate the script to Ubuntu: {java_exe} i >> {init_file} && . {init_file}", file=out)
+            print(f"Integrate the script to Ubuntu: {executable} i >> {init_file} && . {init_file}", file=out)
         self.exit(status)
 
     def exit(self, status: int, *message_lines: str):
@@ -202,6 +206,35 @@ class DirectoryBookmarksSimplified:
             pass
         return self.app_version
 
+    def print_install(self):
+        exe_path = self.utils_get_path_of_running_application().replace(self.USER_HOME, "$HOME")
+        engine = "python"
+        if not self.is_system_windows:
+            engine = "python3"
+        if self.is_system_windows:
+            exe = f'"{engine}" "{exe_path}"'
+            msg = "\n".join([
+                f"# Shortcuts for {self.app_name} v{self.app_version} utilities - for the PowerShell:",
+                f"function directoryBookmarks {{ & {exe} $args }}",
+                "function cdf { Set-Location -Path $(directoryBookmarks -g $args) }",
+                "function sdf { directoryBookmarks s $($PWD.Path) @args }",
+                "function ldf { directoryBookmarks l $args }",
+                "function cpf() { cp ($args[0..($args.Length - 2)]) -Destination (ldf $args[-1]) -Force }"
+            ])
+            print(msg, file=self.out)
+        else:
+            engine = "python3"
+            exe = f'"{engine}" {exe_path}'
+            msg = "\n".join([
+                f"# Shortcuts for {self.app_name} v{self.app_version} utilities - for the Bash:",
+                f"alias directoryBookmarks='{exe}'",
+                "cdf() { cd \"$(directoryBookmarks g $1)\"; }",
+                "sdf() { directoryBookmarks s \"$PWD\" \"$@\"; }",  # Ready for symbolic links
+                "ldf() { directoryBookmarks l \"$1\"; }",
+                "cpf() { argCount=$#; cp ${@:1:$((argCount-1))} \"$(ldf ${!argCount})\"; }"
+            ])
+            print(msg, file=self.out)
+
     def convert_dir(self, to_store_format: bool, dir_val: str, is_system_windows: bool) -> str:
         home_enabled = bool(self.home_dir_mark)
         if to_store_format:
@@ -222,18 +255,18 @@ class DirectoryBookmarksSimplified:
         return self.utils_get_path_of_running_application().lower().endswith(".jar")
 
     def utils_get_src_path(self) -> str:
-        return str(Path(self.utils_get_script_dir()) / f"{self.app_name}.java")
+        return str(Path(self.utils_get_script_dir()) / f"{self.app_name}.py")
 
     def utils_get_path_of_running_application(self) -> str:
         try:
             path = sys.argv[0]
             return unquote(os.path.abspath(path))
         except Exception:
-            return f"{self.app_name}.java"
+            return f"{self.app_name}.py"
 
     def utils_is_system_ms_windows(self) -> bool:
         return os.name == "nt"
 
 
 if __name__ == "__main__":
-    DirectoryBookmarksSimplified.main()
+    DirectoryBookmarks.main()
