@@ -113,6 +113,7 @@ public class ImageBorderMirror {
         var writeParam = writer.getDefaultWriteParam();
         writeParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         writeParam.setCompressionQuality(0.9f);
+        writeParam.setProgressiveMode(ImageWriteParam.MODE_DEFAULT);
 
         try (OutputStream os = Files.newOutputStream(outFile);
              var ios = ImageIO.createImageOutputStream(os)) {
