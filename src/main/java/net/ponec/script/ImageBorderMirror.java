@@ -7,6 +7,9 @@ import java.awt.image.*;
 import java.io.*;
 import java.nio.file.Path;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.IIOImage;
+import java.nio.file.Files;
 
 /**
  * The ImageBorderMirror class extends an image by mirroring its edges and filling the corners.
@@ -34,15 +37,19 @@ public class ImageBorderMirror {
 
         // Parse command-line arguments
         var inputImagePath = Path.of(args[0]);
-        var borderWidth = args.length < 2 ? 150 : Integer.parseInt(args[1]);
-        var outputImagePath = inputImagePath
-                .toAbsolutePath()
-                .getParent()
-                .resolve("mirrored_borders.png");
+        var borderWidth = args.length < 2 ? 200 : Integer.parseInt(args[1]);
+        var outputImagePath = outputImagePath(inputImagePath);
 
         // Load the input image
         var originalImage = ImageIO.read(inputImagePath.toFile());
+        var newImage = createNewImage(originalImage, borderWidth);
 
+        // Save the new image
+        writeJpeg(newImage, outputImagePath);
+        System.out.println("Image saved as " + outputImagePath);
+    }
+
+    private BufferedImage createNewImage(BufferedImage originalImage, int borderWidth) {
         // Get image dimensions
         var width = originalImage.getWidth();
         var height = originalImage.getHeight();
@@ -52,8 +59,8 @@ public class ImageBorderMirror {
         var newHeight = height + 2 * borderWidth;
 
         // Create a new image with the extended size
-        var newImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
-        var g2d = newImage.createGraphics();
+        var result = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+        var g2d = result.createGraphics();
 
         // Set background color (white)
         g2d.setColor(Color.WHITE);
@@ -86,10 +93,33 @@ public class ImageBorderMirror {
 
         // Release resources
         g2d.dispose();
+        return result;
+    }
 
-        // Save the new image
-        ImageIO.write(newImage, "PNG", outputImagePath.toFile());
-        System.out.println("Image saved as " + outputImagePath);
+    private static Path outputImagePath(Path inputImagePath) {
+        var name = inputImagePath.getFileName().toString();
+        var dotIndex = name.lastIndexOf('.');
+        var outName = "%s_mirrored%s".formatted(
+                name.substring(0, dotIndex),
+                name.substring(dotIndex));
+        return inputImagePath
+                .toAbsolutePath()
+                .getParent()
+                .resolve(outName);
+    }
+
+    private static void writeJpeg(BufferedImage image, Path outFile) throws IOException {
+        var writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+        var writeParam = writer.getDefaultWriteParam();
+        writeParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        writeParam.setCompressionQuality(0.9f);
+
+        try (OutputStream os = Files.newOutputStream(outFile);
+             var ios = ImageIO.createImageOutputStream(os)) {
+            writer.setOutput(ios);
+            var iimage = new IIOImage(image, null, null);
+            writer.write(null, iimage, writeParam);
+        }
     }
 
     /**
