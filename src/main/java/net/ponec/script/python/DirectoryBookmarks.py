@@ -20,7 +20,7 @@ class DirectoryBookmarks:
                  enforced_linux=False, exit_by_exception=False):
         self.home_page = "https://github.com/pponec/PPScriptsForJava"
         self.app_name = self.__class__.__name__
-        self.app_version = "2.0.0"
+        self.app_version = "2.0.1"
         self.cell_separator = '\t'
         self.comment = '#'
         self.new_line = os.linesep
@@ -34,6 +34,7 @@ class DirectoryBookmarks:
         self.exit_by_exception = exit_by_exception
         self.is_system_windows = (not enforced_linux) and self.utils_is_system_ms_windows()
         self.dir_separator = '/' if enforced_linux else os.sep
+        self.userHome = self.USER_HOME if self.is_system_windows else self.USER_HOME.replace('\\', '/')
 
     @staticmethod
     def main():
@@ -99,7 +100,7 @@ class DirectoryBookmarks:
     def print_help_and_exit(self, status: int):
         out = self.out if status == 0 else self.err
         executable = f"python {self.app_name}.py"
-        print(f"{self.app_name} {self.app_version} ({self.home_page})", file=out)
+        print(f"{self.app_name}.py {self.app_version} ({self.home_page})", file=out)
         print(f"Usage: {executable} [slgdrbfuc] directory bookmark optionalComment", file=out)
         if self.is_system_windows:
             init_file = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1"
@@ -243,7 +244,7 @@ class DirectoryBookmarks:
             return result.replace('\\', '/') if is_system_windows else result
         else:
             result = dir_val.replace('/', '\\') if is_system_windows else dir_val
-            return (self.USER_HOME + result[len(self.home_dir_mark):]
+            return (self.userHome + result[len(self.home_dir_mark):]
                     if home_enabled and result.startswith(self.home_dir_mark) else result)
 
     # === Utilities ===
