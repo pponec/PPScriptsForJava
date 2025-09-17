@@ -13,6 +13,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -149,7 +150,6 @@ public class DirectoryBookmarksTest {
         assertEquals("a,b,c", output);
     }
 
-
     @Test
     void getSubdirTest() throws Exception {
         var ctx = DirBookContext.of();
@@ -167,6 +167,51 @@ public class DirectoryBookmarksTest {
         subdir = ctx.getOut();
         expected = "/temp/bin\\subdirectory\\abc\n";
         assertEquals(expected, subdir);
+    }
+
+    @Test
+    void getSubdirWithCommentTest() throws Exception {
+        var ctx = DirBookContext.of();
+        var instance = ctx.instance;
+        var myDir = "/temp/bin";
+        instance.mainRun(list("save", myDir, "bin", "Comment"));
+        assertEquals(1, ctx.bookmarkStream().count());
+
+        instance.mainRun(list("list", "bin/subdirectory/abc"));
+        var subdir = ctx.getOut();
+        var expected = "/temp/bin/subdirectory/abc\n";
+        assertEquals(expected, subdir);
+
+        instance.mainRun(list("list", "bin/subdirectory/abc"));
+        subdir = ctx.getOut();
+        expected = "/temp/bin/subdirectory/abc\n";
+        assertEquals(expected, subdir);
+    }
+
+    @Test
+    void regexpTest() throws Exception {
+        // Input values
+        var key = "a";
+        var value = "xxx";
+        var cellSeparator = "x#";
+        var text1 = "axxxx#cc";
+        var text2 = "axxx";
+
+        var pattern = Pattern.compile("%s((?:(?!%s).)*)".formatted(
+                Pattern.quote(key),
+                Pattern.quote(cellSeparator)));
+
+        // Check test1:
+        var matcher1 = pattern.matcher(text1);
+        assertTrue(matcher1.find(), "Pattern should match input");
+        var result1 = matcher1.group(1); // capture group 1
+        assertEquals(value, result1, "Captured group should contain expected text");
+
+        // Check test2:
+        var matcher2 = pattern.matcher(text2);
+        assertTrue(matcher2.find(), "Pattern should match input");
+        var result2 = matcher2.group(1); // capture group 1
+        assertEquals(value, result2, "Captured group should contain expected text");
     }
 
     // =========== UTILS ===========

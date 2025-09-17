@@ -20,7 +20,7 @@ class DirectoryBookmarks:
                  enforced_linux=False, exit_by_exception=False):
         self.home_page = "https://github.com/pponec/PPScriptsForJava"
         self.app_name = self.__class__.__name__
-        self.app_version = "2.0.2"
+        self.app_version = "2.0.4"
         self.code_page = "utf-8"
         self.cell_separator = '\t'
         self.comment = '#'
@@ -137,24 +137,25 @@ class DirectoryBookmarks:
             for line in sorted(l.strip() for l in f if not l.startswith(self.comment)):
                 if self.is_system_windows:
                     line = line.replace('/', '\\')
-                print(line, file=self.out)
+                if line.strip() != "":
+                    print(line, file=self.out)
 
     def get_directory(self, key: str, default_dir: str) -> str:
         if key == self.current_dir_mark:
             return self.current_dir
         elif key == self.home_dir_mark:
             return self.USER_HOME
-        else:
-            idx = max(key.find('/'), key.find('\\'))
-            ext_key = (key[:idx] if idx >= 0 else key) + self.cell_separator
-            with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
-                for line in f:
-                    if not line.startswith(self.comment) and line.startswith(ext_key):
-                        dir_string = line[len(ext_key):]
-                        comment_match = re.search(r"\s+#\s", dir_string)
-                        end_dir = key[idx:] if idx >= 0 else ""
-                        result = (dir_string[:comment_match.start()] if comment_match else dir_string) + end_dir
-                        return self.convert_dir(False, result.strip(), self.is_system_windows)
+        idx = max(key.find("/"), key.find("\\"))
+        ext_key = key[:idx] if idx >= 0 else key
+        end_dir = key[idx:] if idx >= 0 else ""
+        pattern = re.compile(r"{}((?:(?!{}).)*)".format(
+            re.escape(ext_key + self.cell_separator),
+            re.escape(self.cell_separator + self.comment)))
+        with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
+            for line in f:
+                match = pattern.match(line)
+                if match:
+                    return self.convert_dir(False, match.group(1) + end_dir, self.is_system_windows)
         return default_dir
 
     def remove_bookmark(self, key: str):
@@ -176,7 +177,8 @@ class DirectoryBookmarks:
                 writer.write(self.new_line)
             with open(self.create_store_file(), encoding=self.code_page, errors="replace") as reader:
                 for line in sorted(l for l in reader if not l.startswith(self.comment) and not l.startswith(extended_key)):
-                    writer.write(line)
+                    if line.strip() != "":
+                        writer.write(line)
         shutil.move(temp_file, self.create_store_file())
 
     def fix_marks_of_missing_directories(self):
@@ -189,7 +191,7 @@ class DirectoryBookmarks:
     def get_all_sorted_keys(self) -> TypedList[str]:
         with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
             return sorted(line.split(self.cell_separator)[0]
-                          for line in f if not line.startswith(self.comment))
+                          for line in f if not line.startswith(self.comment) and self.cell_separator in line)
 
     def print_all_bookmarks_of_directory(self, directory: str):
         for key in self.get_all_sorted_keys():
@@ -210,11 +212,8 @@ class DirectoryBookmarks:
 
     def print_install(self):
         exe_path = self.utils_get_path_of_running_application().replace(self.USER_HOME, "$HOME")
-        engine = "python"
-        if not self.is_system_windows:
-            engine = "python3"
+        exe = f'"{sys.executable}" "{exe_path}"'
         if self.is_system_windows:
-            exe = f'"{engine}" "{exe_path}"'
             msg = "\n".join([
                 f"# Shortcuts for {self.app_name} v{self.app_version} utilities - for the PowerShell:",
                 f"function directoryBookmarks {{ & {exe} $args }}",
@@ -225,8 +224,6 @@ class DirectoryBookmarks:
             ])
             print(msg, file=self.out)
         else:
-            engine = "python3"
-            exe = f'"{engine}" {exe_path}'
             msg = "\n".join([
                 f"# Shortcuts for {self.app_name} v{self.app_version} utilities - for the Bash:",
                 f"alias directoryBookmarks='{exe}'",

@@ -26,14 +26,14 @@ import java.util.stream.Stream;
  * and saving to a persistent storage.
  *
  * @author https://github.com/pponec
- * @version 2025-04-10
+ * @version 2025-09-19
  */
 public final class DirectoryBookmarks {
     static final String USER_HOME = System.getProperty("user.home");
 
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "2.0.1";
+    final String appVersion = "2.0.4";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
@@ -208,29 +208,23 @@ public final class DirectoryBookmarks {
                 return USER_HOME;
             default:
                 var idx = Math.max(key.indexOf('/'), key.indexOf('\\'));
-                var extKey = (idx >= 0 ? key.substring(0, idx) : key) + cellSeparator;
+                var extKey = idx >= 0 ? key.substring(0, idx) : key;
+                var endDir = idx >= 0 ? key.substring(idx) : "";
+                var pattern = Pattern.compile("%s((?:(?!%s).)*)".formatted(
+                                Pattern.quote(extKey + cellSeparator),
+                                Pattern.quote("" + cellSeparator + comment)));
                 var storeFile = createStoreFile();
                 try (var reader = new BufferedReader(new FileReader(storeFile))) {
-                    var dir = reader.lines()
-                            .filter(line -> !line.startsWith(String.valueOf(comment)))
-                            .filter(line -> line.startsWith(extKey))
-                            .map(line -> line.substring(extKey.length()))
-                            .findFirst();
-                    if (dir.isPresent()) {
-                        var dirString = dir.get();
-                        var commentPattern = Pattern.compile("\\s+" + comment + "\\s");
-                        var commentMatcher = commentPattern.matcher(dirString);
-                        var endDir = idx >= 0 ? key.substring(idx) : "";
-                        var result = (commentMatcher.find()
-                                ? dirString.substring(0, commentMatcher.start())
-                                : dirString)
-                                + endDir;
-                        return convertDir(false, result, isSystemWindows);
-                    }
+                    return reader.lines()
+                            .map(pattern::matcher)
+                            .map(matcher -> matcher.find() ? matcher.group(1) : null)
+                            .filter(Objects::nonNull)
+                            .map(dir -> convertDir(false, dir + endDir, isSystemWindows))
+                            .findFirst()
+                            .orElse(defaultDir);
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
                 }
-                return defaultDir;
         }
     }
 
@@ -245,7 +239,6 @@ public final class DirectoryBookmarks {
         if (currentDirMark.equals(dir)) {
             dir = currentDir;
         }
-        var extendedKey = key + cellSeparator;
         var tempFile = getTempStoreFile();
         var storeFile = createStoreFile();
         try (var writer = new BufferedWriter(new FileWriter(tempFile))) {
@@ -264,7 +257,8 @@ public final class DirectoryBookmarks {
             try (var reader = new BufferedReader(new FileReader(storeFile))) {
                 reader.lines()
                         .filter(line -> !line.startsWith(String.valueOf(comment)))
-                        .filter(line -> !line.startsWith(extendedKey))
+                        .filter(line -> !line.startsWith(key + cellSeparator))
+                        .filter(line -> !line.trim().isEmpty())
                         .sorted()
                         .forEach(line -> {
                             try {
@@ -312,15 +306,13 @@ public final class DirectoryBookmarks {
     }
 
     private List<String> getAllSortedKeys() throws IOException {
-        var result = Collections.<String>emptyList();
         try (var reader = new BufferedReader(new FileReader(createStoreFile()))) {
-            result = reader.lines()
+            return List.of(reader.lines()
                     .filter(line -> !line.startsWith(String.valueOf(comment)))
                     .sorted()
                     .map(line -> line.substring(0, line.indexOf(cellSeparator)))
-                    .toList();
+                    .toList());
         }
-        return List.of(result);
     }
 
     private void printAllBookmarksOfDirectory(String directory) throws IOException {
