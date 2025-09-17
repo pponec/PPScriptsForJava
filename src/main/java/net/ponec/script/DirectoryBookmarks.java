@@ -33,7 +33,7 @@ public final class DirectoryBookmarks {
 
     final String homePage = "https://github.com/pponec/PPScriptsForJava";
     final String appName = getClass().getSimpleName();
-    final String appVersion = "2.0.0";
+    final String appVersion = "2.0.1";
     final String requiredJavaModules = "java.base,java.net.http,jdk.compiler,jdk.crypto.ec";
     final char cellSeparator = '\t';
     final char comment = '#';
@@ -109,7 +109,7 @@ public final class DirectoryBookmarks {
                 if (args.size() < 2) printHelpAndExit(-1);
                 save("", args.get(1), List.of()); // (emptyDir, key, comments)
             }
-            case "r", "read" -> {
+            case "r", "remove" -> {
                 if (args.size() < 2) printHelpAndExit(-1);
                 removeBookmark(args.get(1));
             }

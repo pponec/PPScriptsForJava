@@ -20,7 +20,8 @@ class DirectoryBookmarks:
                  enforced_linux=False, exit_by_exception=False):
         self.home_page = "https://github.com/pponec/PPScriptsForJava"
         self.app_name = self.__class__.__name__
-        self.app_version = "2.0.1"
+        self.app_version = "2.0.2"
+        self.code_page = "utf-8"
         self.cell_separator = '\t'
         self.comment = '#'
         self.new_line = os.linesep
@@ -76,7 +77,7 @@ class DirectoryBookmarks:
             if len(args) < 2:
                 self.print_help_and_exit(-1)
             self.save("", args[1], [])
-        elif cmd in ("r", "read"):
+        elif cmd in ("r", "remove"):
             if len(args) < 2:
                 self.print_help_and_exit(-1)
             self.remove_bookmark(args[1])
@@ -101,7 +102,7 @@ class DirectoryBookmarks:
         out = self.out if status == 0 else self.err
         executable = f"python {self.app_name}.py"
         print(f"{self.app_name}.py {self.app_version} ({self.home_page})", file=out)
-        print(f"Usage: {executable} [slgdrbfuc] directory bookmark optionalComment", file=out)
+        print(f"Usage: {executable} [slgdrbf] directory bookmark optionalComment", file=out)
         if self.is_system_windows:
             init_file = "$HOME\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1"
             print(f"Integrate the script to Windows: {executable} i >> {init_file}", file=out)
@@ -132,7 +133,7 @@ class DirectoryBookmarks:
         return Path(path)
 
     def print_directories(self):
-        with open(self.create_store_file(), encoding="utf-8") as f:
+        with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
             for line in sorted(l.strip() for l in f if not l.startswith(self.comment)):
                 if self.is_system_windows:
                     line = line.replace('/', '\\')
@@ -146,7 +147,7 @@ class DirectoryBookmarks:
         else:
             idx = max(key.find('/'), key.find('\\'))
             ext_key = (key[:idx] if idx >= 0 else key) + self.cell_separator
-            with open(self.create_store_file(), encoding="utf-8") as f:
+            with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
                 for line in f:
                     if not line.startswith(self.comment) and line.startswith(ext_key):
                         dir_string = line[len(ext_key):]
@@ -166,14 +167,14 @@ class DirectoryBookmarks:
             dir_val = self.current_dir
         extended_key = key + self.cell_separator
         temp_file = self.get_temp_store_file()
-        with open(temp_file, "w", encoding="utf-8") as writer:
+        with open(temp_file, "w", encoding=self.code_page) as writer:
             writer.write(self.data_header + self.new_line)
             if dir_val:
                 writer.write(key + self.cell_separator + self.convert_dir(True, dir_val, self.utils_is_system_ms_windows()))
                 if comments:
                     writer.write(self.cell_separator + self.comment + ''.join(' ' + c for c in comments))
                 writer.write(self.new_line)
-            with open(self.create_store_file(), encoding="utf-8") as reader:
+            with open(self.create_store_file(), encoding=self.code_page, errors="replace") as reader:
                 for line in sorted(l for l in reader if not l.startswith(self.comment) and not l.startswith(extended_key)):
                     writer.write(line)
         shutil.move(temp_file, self.create_store_file())
@@ -186,7 +187,7 @@ class DirectoryBookmarks:
                 self.remove_bookmark(key)
 
     def get_all_sorted_keys(self) -> TypedList[str]:
-        with open(self.create_store_file(), encoding="utf-8") as f:
+        with open(self.create_store_file(), encoding=self.code_page, errors="replace") as f:
             return sorted(line.split(self.cell_separator)[0]
                           for line in f if not line.startswith(self.comment))
 
@@ -198,7 +199,7 @@ class DirectoryBookmarks:
     def get_script_version(self) -> str:
         pattern = re.compile(r'String\s+appVersion\s*=\s*"(.+)"\s*;')
         try:
-            with open(self.utils_get_src_path(), encoding="utf-8") as f:
+            with open(self.utils_get_src_path(), encoding=self.code_page, errors="replace") as f:
                 for line in f:
                     match = pattern.search(line)
                     if match:
