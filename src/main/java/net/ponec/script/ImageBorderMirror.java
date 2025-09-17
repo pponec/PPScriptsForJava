@@ -37,11 +37,12 @@ public class ImageBorderMirror {
 
         // Parse command-line arguments
         var inputImagePath = Path.of(args[0]);
-        var borderWidth = args.length < 2 ? 200 : Integer.parseInt(args[1]);
+        var requiredBorderWidth = args.length < 2 ? 200 : Integer.parseInt(args[1]);
         var outputImagePath = outputImagePath(inputImagePath);
 
         // Load the input image
         var originalImage = ImageIO.read(inputImagePath.toFile());
+        var borderWidth = calculateSafeBorderWidth(requiredBorderWidth, originalImage);
         var newImage = createNewImage(originalImage, borderWidth);
 
         // Save the new image
@@ -106,6 +107,19 @@ public class ImageBorderMirror {
                 .toAbsolutePath()
                 .getParent()
                 .resolve(outName);
+    }
+
+    /**
+     * Calculates a safe border width that is always smaller than the image width or height.
+     *
+     * @param requestedWidth Requested border width
+     * @param image Original image
+     * @return Safe border width that is always the same or smaller than the smaller dimension of the image
+     */
+    private int calculateSafeBorderWidth(int requestedWidth, BufferedImage image) {
+        var maxAllowedWidth = Math.min(image.getWidth(), image.getHeight());
+        var result = Math.min(requestedWidth, maxAllowedWidth);
+        return Math.max(result, 1);
     }
 
     private static void writeJpeg(BufferedImage image, Path outFile) throws IOException {
