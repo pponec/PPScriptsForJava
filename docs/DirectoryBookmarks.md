@@ -1,4 +1,5 @@
 # Multiplatform Directory Bookmarks
+(easily navigate between directories across all your platforms)
 
 https://github.com/pponec/PPScriptsForJava/assets/5459216/c7df34c4-c572-43f0-a247-2b27074ff7f5
 
@@ -44,6 +45,8 @@ Performance note: although direct use of a Java class may resemble interpreting 
 On newer machines, there is a barely noticeable delay, but on older machines such a delay can be distracting. 
 To eliminate this problem, the class can compile itself and compile the result into an executable JAR file, reducing execution time by an order of magnitude. 
 Starting Java with only the kernel module parameter had no measurable effect on the result.
+
+Python note: Since September 2025, a [Python version](https://github.com/pponec/PPScriptsForJava/blob/main/src/main/java/net/ponec/script/pytnoh/DirectoryBookmarks.py) of the script is also available, the use of parameters remains the same.
 
 Next, I will present a description of selected commands for the character terminal. 
 Depending on the circumstances, it may be necessary to add a path to the files. 
