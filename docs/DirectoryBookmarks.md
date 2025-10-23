@@ -1,4 +1,4 @@
-# Multiplatform Directory Bookmarks
+# Multiplatform Directory Bookmarks (Java)
 (easily navigate between directories across all your platforms)
 
 https://github.com/pponec/PPScriptsForJava/assets/5459216/c7df34c4-c572-43f0-a247-2b27074ff7f5

@@ -1,4 +1,4 @@
-# Multiplatform Directory Bookmarks
+# Multiplatform Directory Bookmarks (Python)
 (easily navigate between directories across all your platforms)
 
 [![Usage](https://img.youtube.com/vi/pu1L6YPPAIk/0.jpg)](https://www.youtube.com/watch?v=pu1L6YPPAIk)
