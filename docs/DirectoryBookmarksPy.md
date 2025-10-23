@@ -60,7 +60,7 @@ I have already found similar tools on the Internet, but they either did not meet
 ## How to integrate the application
 
 1. Install Python version 3+.
-2. Download the file [DirectoryBookmarks.py](../src/main/java/net/ponec/script/DirectoryBookmarks.java) to a local directory 
+2. Download the file [DirectoryBookmarks.py](../src/main/java/net/ponec/script/python/DirectoryBookmarks.py) to a local directory 
 3. Open a character terminal and run commands depending on the operating system.
 
 ### For the Ubuntu:
