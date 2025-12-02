@@ -125,23 +125,24 @@ public final class SqlExecutor {
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.0.9
+     * @version 1.1.0
      */
     static class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
-        private final Map<String, Object[]> params = new HashMap<>();
         protected String sqlTemplate = "";
+        private final Map<String, Object[]> params = new HashMap<>();
         private PreparedStatement preparedStatement = null;
 
         public SqlParamBuilder(Connection dbConnection) {
             this.dbConnection = dbConnection;
         }
 
-        /** Close statement (if any) and set the new SQL template */
+        /** Close an old statement (if any) and assign the new SQL template */
         public SqlParamBuilder sql(String... sqlLines) {
             close();
+            params.clear();
             sqlTemplate = sqlLines.length == 1 ? sqlLines[0] : String.join("\n", sqlLines);
             return this;
         }
@@ -153,22 +154,32 @@ public final class SqlExecutor {
         }
 
         public int execute() throws IllegalStateException, SQLException {
-            return prepareStatement().executeUpdate();
+            return prepareStatement(Statement.NO_GENERATED_KEYS).executeUpdate();
         }
 
-        /** A ResultSet object is automatically closed when the Statement object that generated it is closed,
-          * re-executed, or used to retrieve the next result from a sequence of multiple results. */
+        /** For INSERT operations used before calling method {@code #generatedKeysRs}. */
+        public int executeInsert() throws IllegalStateException, SQLException {
+            return prepareStatement(Statement.RETURN_GENERATED_KEYS).executeUpdate();
+        }
+
+        /** Execute: INSERT, UPDATE, DELETE, DDL statements.
+         * The ResultSet object is automatically closed when the Statement object that generated it is closed,
+         * re-executed, or used to retrieve the next result from a sequence of multiple results. */
         private ResultSet executeSelect() throws IllegalStateException {
             try {
-                return prepareStatement().executeQuery();
+                return prepareStatement(Statement.NO_GENERATED_KEYS).executeQuery();
             } catch (Exception ex) {
-                throw (ex instanceof RuntimeException re) ? re : new IllegalStateException(ex);
+                throw (ex instanceof RuntimeException) ? (RuntimeException) ex : new IllegalStateException(ex);
             }
         }
 
-        /** Use the  {@link #streamMap(SqlFunction)} or {@link #forEach(SqlConsumer)} methods rather */
-        private Stream<ResultSet> stream() {
-            final var resultSet = executeSelect();
+        /**
+         * Returns a Stream over the given ResultSet. Closing the Stream also closes the ResultSet.
+         * Prefer {@link #streamMap(SqlFunction)} or {@link #forEach(SqlConsumer)}.
+         * @param resultSet the ResultSet to stream over
+         */
+
+        private Stream<ResultSet> stream(final ResultSet resultSet) {
             final var iterator = new Iterator<ResultSet>() {
                 @Override
                 public boolean hasNext() {
@@ -183,16 +194,23 @@ public final class SqlExecutor {
                     return resultSet;
                 }
             };
-            return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED), false);
+            final var spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED);
+            return StreamSupport.stream(spliterator, false).onClose(() -> {
+                try {
+                    resultSet.close();
+                } catch (SQLException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
         }
 
         /** Iterate executed select */
-        public void forEach(SqlConsumer<ResultSet> consumer) throws IllegalStateException  {
-            stream().forEach(consumer);
+        public void forEach( SqlConsumer consumer) throws IllegalStateException, SQLException  {
+            stream(executeSelect()).forEach(consumer);
         }
 
         public <R> Stream<R> streamMap(SqlFunction<ResultSet, ? extends R> mapper ) {
-            return stream().map(mapper);
+            return stream(executeSelect()).map(mapper);
         }
 
         /** The method closes a PreparedStatement object with related objects, not the database connection. */
@@ -207,12 +225,16 @@ public final class SqlExecutor {
             }
         }
 
-        public PreparedStatement prepareStatement() throws SQLException {
-            final var sqlValues = new ArrayList<>();
+        /**
+         * Build (or reuse) a PreparedStatement object with SQL arguments
+         * @param autoGeneratedKeys For example: {@code Statement.RETURN_GENERATED_KEYS}
+         */
+        public PreparedStatement prepareStatement(int autoGeneratedKeys) throws SQLException {
+            final var sqlValues = new ArrayList<>(params.size());
             final var sql = buildSql(sqlValues, false);
             final var result = preparedStatement != null
                     ? preparedStatement
-                    : dbConnection.prepareStatement(sql);
+                    : dbConnection.prepareStatement(sql, autoGeneratedKeys);
             for (int i = 0, max = sqlValues.size(); i < max; i++) {
                 result.setObject(i + 1, sqlValues.get(i));
             }
@@ -220,8 +242,24 @@ public final class SqlExecutor {
             return result;
         }
 
-        private String buildSql(List<Object> sqlValues, boolean toLog) {
-            final var result = new StringBuilder(256);
+        protected ResultSet generatedKeys() {
+            try {
+                return preparedStatement != null ? preparedStatement.getGeneratedKeys() : null;
+            } catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+
+        /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed. */
+        public <R> Stream<R> streamGeneratedKeys(SqlFunction<ResultSet, ? extends R> mapper ) {
+            final var generatedKeysRs = generatedKeys();
+            return generatedKeysRs != null
+                    ? stream(generatedKeysRs).map(mapper)
+                    : Stream.of();
+        }
+
+        protected String buildSql(List<Object> sqlValues, boolean toLog) {
+            final var result = new StringBuffer(256);
             final var matcher = SQL_MARK.matcher(sqlTemplate);
             final var missingKeys = new HashSet<>();
             while (matcher.find()) {
