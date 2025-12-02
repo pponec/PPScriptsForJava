@@ -121,13 +121,13 @@ public final class SqlExecutor {
     }
 
     /**
-     * Less than 170 lines long class to simplify work with JDBC.
+     * Less than 195 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
      * @version 1.1.0
      */
-    static class SqlParamBuilder implements AutoCloseable {
+    static public class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
         private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
@@ -147,7 +147,7 @@ public final class SqlExecutor {
             return this;
         }
 
-        /** Assign a SQL value(s). In case a reused statement set the same number of parameters items. */
+        /** Assigns SQL parameter values. If reusing a statement, ensure the same number of parameters is set. */
         public SqlParamBuilder bind(String key, Object... values) {
             params.put(key, values.length > 0 ? values : new Object[]{null});
             return this;
@@ -194,18 +194,14 @@ public final class SqlExecutor {
                     return resultSet;
                 }
             };
+            // NOTE: The last ResultSet from a PreparedStatement is closed automatically when the statement is closed.
+            // For multiple ResultSets or other creation methods, must be closed explicitly.
             final var spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED);
-            return StreamSupport.stream(spliterator, false).onClose(() -> {
-                try {
-                    resultSet.close();
-                } catch (SQLException e) {
-                    throw new IllegalStateException(e);
-                }
-            });
+            return StreamSupport.stream(spliterator, false);
         }
 
         /** Iterate executed select */
-        public void forEach( SqlConsumer consumer) throws IllegalStateException, SQLException  {
+        public void forEach(SqlConsumer consumer) throws IllegalStateException, SQLException  {
             stream(executeSelect()).forEach(consumer);
         }
 
@@ -242,7 +238,7 @@ public final class SqlExecutor {
             return result;
         }
 
-        protected ResultSet generatedKeys() {
+        protected ResultSet generatedKeysRs() {
             try {
                 return preparedStatement != null ? preparedStatement.getGeneratedKeys() : null;
             } catch (SQLException e) {
@@ -250,9 +246,10 @@ public final class SqlExecutor {
             }
         }
 
-        /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed. */
-        public <R> Stream<R> streamGeneratedKeys(SqlFunction<ResultSet, ? extends R> mapper ) {
-            final var generatedKeysRs = generatedKeys();
+        /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed.
+         * Usage:  {@code var insertedIds = builder.generatedKeys(rs -> rs.getInt(1)).toList();} */
+        public <R> Stream<R> generatedKeys(SqlFunction<ResultSet, ? extends R> mapper ) {
+            final var generatedKeysRs = generatedKeysRs();
             return generatedKeysRs != null
                     ? stream(generatedKeysRs).map(mapper)
                     : Stream.of();

@@ -108,7 +108,7 @@ public class SqlParamBuilderDemo extends AbstractJdbcConnector {
         }
     }
 
-    record Employee (int id, String name,  LocalDate created){}
+    record Employee (int id, String name, LocalDate created){}
 
     @Override
     protected Connection createDbConnection() throws ClassNotFoundException, SQLException {
@@ -124,13 +124,15 @@ public class SqlParamBuilderDemo extends AbstractJdbcConnector {
             builder.sql("INSERT INTO employee",
                             "( id, code, created ) VALUES",
                             "( :id, :code, :created )");
-            builder.bind("id",  1).bind("code", "A").bind("created", someDate).execute();
-            builder.bind("id",  2).bind("code", "B").bind("created", someDate).execute();
-            builder.bind("id",  3).bind("code", "C").bind("created", someDate).execute();
-            builder.bind("id", 11).bind("code", "D").bind("created", someDate).execute();
-            builder.bind("id", 12).bind("code", "E").bind("created", someDate).execute();
-            builder.bind("id", 13).bind("code", "F").bind("created", someDate).execute();
+            builder.bind("id",  1).bind("code", "A").bind("created", someDate).executeInsert();
+            builder.bind("id",  2).bind("code", "B").bind("created", someDate).executeInsert();
+            builder.bind("id",  3).bind("code", "C").bind("created", someDate).executeInsert();
+            builder.bind("id", 11).bind("code", "D").bind("created", someDate).executeInsert();
+            builder.bind("id", 12).bind("code", "E").bind("created", someDate).executeInsert();
+            builder.bind("id", 13).bind("code", "F").bind("created", someDate).executeInsert();
 
+            var insertedIds = builder.generatedKeys(rs -> rs.getInt(1)).toList();
+            System.out.printf("insertedIds: %s%n", insertedIds);
         }
         return result;
     }
