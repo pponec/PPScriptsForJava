@@ -247,7 +247,7 @@ public final class SqlExecutor {
         }
 
         /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed.
-         * Usage:  {@code var insertedIds = builder.generatedKeys(rs -> rs.getInt(1)).toList();} */
+         * Usage:  {@code builder.generatedKeys(rs -> rs.getInt(1)).toList()} */
         public <R> Stream<R> generatedKeys(SqlFunction<ResultSet, ? extends R> mapper ) {
             final var generatedKeysRs = generatedKeysRs();
             return generatedKeysRs != null
