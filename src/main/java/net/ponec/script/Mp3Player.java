@@ -25,11 +25,17 @@ import java.net.InetSocketAddress;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.Executors;
 
+/** Run the script in the MP3 directory:
+ * <ul>
+ *     <li>java Mp3Player.java // to create the file index.html<li/>
+ *     <li>java Mp3Player.java go [8080] // to run a local HTTP server on the port 8080<li/>
+ * </ul>
+ */
 public class Mp3Player {
 
     private final String homePage = "https://github.com/pponec/Mp3PlayerGenerator";
     private final String appName = getClass().getName();
-    private final String appVersion = "1.3.5";
+    private final String appVersion = "1.3.6";
     private final String outputFile = "index.html";
     private final Charset charset = StandardCharsets.UTF_8;
     private HttpServer server = null;
@@ -41,7 +47,7 @@ public class Mp3Player {
             case "help" -> {
                 player.printHelpAndExit();
             }
-            case "run", "server" -> {
+            case "run", "server", "go" -> {
                 try {
                     var port = args.length >= 2 ? Integer.parseInt(args[1]) : 8000;
                     player.run(port);
