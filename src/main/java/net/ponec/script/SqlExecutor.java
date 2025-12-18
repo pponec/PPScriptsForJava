@@ -121,15 +121,15 @@ public final class SqlExecutor {
     }
 
     /**
-     * Less than 200 lines long class to simplify work with JDBC.
+     * Less than 230 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.1.0
+     * @version 1.1.1
      */
     static public class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
-        private static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
+        static final Pattern SQL_MARK = Pattern.compile(":(\\w+)");
         private final Connection dbConnection;
         protected String sqlTemplate = "";
         private final Map<String, Object[]> params = new HashMap<>();
@@ -148,28 +148,43 @@ public final class SqlExecutor {
         }
 
         /** Assigns SQL parameter values. If reusing a statement, ensure the same number of parameters is set. */
-        public SqlParamBuilder bind(String key, Object... values) {
-            params.put(key, values.length > 0 ? values : new Object[]{null});
+        public SqlParamBuilder bind(final String key, final Object... values) {
+            return bind(true, key, values);
+        }
+
+        /** Assigns SQL parameter values. If reusing a statement, ensure the same number of parameters is set. */
+        public SqlParamBuilder bind(final boolean enabled, final String key, final Object... values) {
+            if (enabled) {
+                params.put(key, values.length > 0 ? values : new Object[]{null});
+            }
             return this;
         }
 
-        public int execute() throws IllegalStateException, SQLException {
-            return prepareStatement(Statement.NO_GENERATED_KEYS).executeUpdate();
+        public int execute() {
+            try {
+                return prepareStatement(Statement.NO_GENERATED_KEYS).executeUpdate();
+            } catch (SQLException e) {
+                throw new SqlException(e);
+            }
         }
 
         /** For INSERT operations used before calling method {@code #generatedKeysRs}. */
-        public int executeInsert() throws IllegalStateException, SQLException {
-            return prepareStatement(Statement.RETURN_GENERATED_KEYS).executeUpdate();
+        public int executeInsert() {
+            try {
+                return prepareStatement(Statement.RETURN_GENERATED_KEYS).executeUpdate();
+            } catch (SQLException e) {
+                throw new SqlException(e);
+            }
         }
 
         /** Execute: INSERT, UPDATE, DELETE, DDL statements.
          * The ResultSet object is automatically closed when the Statement object that generated it is closed,
          * re-executed, or used to retrieve the next result from a sequence of multiple results. */
-        private ResultSet executeSelect() throws IllegalStateException {
+        private ResultSet executeSelect() {
             try {
                 return prepareStatement(Statement.NO_GENERATED_KEYS).executeQuery();
-            } catch (Exception ex) {
-                throw (ex instanceof RuntimeException) ? (RuntimeException) ex : new IllegalStateException(ex);
+            } catch (SQLException ex) {
+                throw new SqlException(ex);
             }
         }
 
@@ -186,7 +201,7 @@ public final class SqlExecutor {
                     try {
                         return resultSet.next();
                     } catch (SQLException e) {
-                        throw new IllegalStateException(e);
+                        throw new SqlException(e);
                     }
                 }
                 @Override
@@ -201,13 +216,13 @@ public final class SqlExecutor {
                 try {
                     resultSet.close();
                 } catch (SQLException e) {
-                    throw new IllegalStateException(e);
+                    throw new SqlException(e);
                 }
             });
         }
 
         /** Iterate executed select */
-        public void forEach(SqlConsumer consumer) throws IllegalStateException, SQLException  {
+        public void forEach(SqlConsumer<ResultSet> consumer) throws SQLException  {
             stream(executeSelect()).forEach(consumer);
         }
 
@@ -220,7 +235,7 @@ public final class SqlExecutor {
         public void close() {
             try (AutoCloseable c2 = preparedStatement) {
             } catch (Exception e) {
-                throw new IllegalStateException("Closing fails", e);
+                throw new SqlException("Closing fails", e);
             } finally {
                 preparedStatement = null;
                 params.clear();
@@ -229,30 +244,35 @@ public final class SqlExecutor {
 
         /** Build (or reuse) a PreparedStatement object with SQL arguments
          * @param autoGeneratedKeys For example: {@code Statement.RETURN_GENERATED_KEYS} */
-        public PreparedStatement prepareStatement(int autoGeneratedKeys) throws SQLException {
-            final var sqlValues = new ArrayList<>(params.size());
-            final var sql = buildSql(sqlValues, false);
-            final var result = preparedStatement != null
-                    ? preparedStatement
-                    : dbConnection.prepareStatement(sql, autoGeneratedKeys);
-            for (int i = 0, max = sqlValues.size(); i < max; i++) {
-                result.setObject(i + 1, sqlValues.get(i));
+        public PreparedStatement prepareStatement(int autoGeneratedKeys) {
+            try {
+                final var sqlValues = new ArrayList<>(params.size());
+                final var sql = buildSql(sqlValues, false);
+                final var result = preparedStatement != null
+                        ? preparedStatement
+                        : dbConnection.prepareStatement(sql, autoGeneratedKeys);
+                for (int i = 0, max = sqlValues.size(); i < max; i++) {
+                    result.setObject(i + 1, sqlValues.get(i));
+                }
+                preparedStatement = result;
+                return result;
+            } catch (SQLException ex) {
+                throw new SqlException("prepareStatement()", ex);
             }
-            preparedStatement = result;
-            return result;
         }
 
         protected ResultSet generatedKeysRs() {
             try {
                 return preparedStatement != null ? preparedStatement.getGeneratedKeys() : null;
             } catch (SQLException e) {
-                throw new IllegalStateException(e);
+                throw new SqlException("generatedKeysRs()", e);
             }
         }
 
-        /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed.
-         * Usage:  {@code builder.generatedKeys(rs -> rs.getInt(1)).toList()} */
-        public <R> Stream<R> generatedKeys(SqlFunction<ResultSet, ? extends R> mapper ) {
+        /** Method for retrieving the primary keys of an INSERT statement. Only one call per INSERT is allowed. <br>
+         * Usage: {@code builder.generatedKeys(rs -> rs.getInt(1)).findFirst()} */
+
+        public <R> Stream<R> generatedKeys(SqlFunction<ResultSet, ? extends R> mapper) {
             final var generatedKeysRs = generatedKeysRs();
             return generatedKeysRs != null
                     ? stream(generatedKeysRs).map(mapper)
@@ -279,7 +299,7 @@ public final class SqlExecutor {
                 }
             }
             if (!toLog && !missingKeys.isEmpty()) {
-                throw new IllegalArgumentException("Missing value of the keys: " + missingKeys);
+                throw new SqlException("Missing SQL parameter: " + missingKeys, null);
             }
             matcher.appendTail(result);
             return result.toString();
@@ -317,6 +337,15 @@ public final class SqlExecutor {
                 }
             }
             void acceptResultSet(T t) throws Exception;
+        }
+
+        public static final class SqlException extends RuntimeException {
+            public SqlException(Throwable cause) {
+                super(cause);
+            }
+            public SqlException(String message, Throwable cause) {
+                super(message, cause);
+            }
         }
     }
 }

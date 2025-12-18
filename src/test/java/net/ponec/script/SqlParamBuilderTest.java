@@ -66,6 +66,7 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                     .bind("id", 1)
                     .bind("code", "T")
                     .bind("created", someDate)
+                    .bind(false, "incorrectArgument", someDate)
                     .execute();
 
             System.out.println("MULTI INSERT");
@@ -117,6 +118,8 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
 
             var counter = new AtomicInteger();
             builder.forEach(rs -> {
+                var id = rs.getInt("id");
+                System.out.printf("\tid = %s%n", id);
                 counter.incrementAndGet();
             });
             assertEquals(5, counter.get());
@@ -139,10 +142,10 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                     "ORDER BY t.id");
             Assertions.assertEquals(builder.sqlTemplate, builder.toString());
 
-            IllegalArgumentException ex = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            var ex = Assertions.assertThrows(SqlParamBuilder.SqlException.class, () -> {
                 var count = builder.streamMap(t -> t).count();
             });
-            assertEquals("Missing value of the keys: [code, id]", ex.getMessage());
+            assertEquals("Missing SQL parameter: [code, id]", ex.getMessage());
 
             System.out.println("ASSIGNED PARAMS");
             builder.bind("id", 10);
@@ -156,7 +159,6 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
             assertEquals(expected, builder.toString());
         }
     }
-
 
     public void toStringTest_2(Connection dbConnection) {
         try (var builder = new SqlParamBuilder(dbConnection)) {
