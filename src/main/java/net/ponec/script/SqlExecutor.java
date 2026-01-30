@@ -125,7 +125,7 @@ public final class SqlExecutor {
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
-     * @version 1.1.2
+     * @version 1.1.3
      */
     static public class SqlParamBuilder implements AutoCloseable {
         /** SQL parameter mark type of {@code :param} */
