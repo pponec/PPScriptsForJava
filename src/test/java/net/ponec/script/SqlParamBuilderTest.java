@@ -78,7 +78,9 @@ public class SqlParamBuilderTest extends AbstractJdbcConnector {
                     .bind("id2", 3)
                     .bind("code", "T")
                     .bind("created", someDate.plusDays(1))
-                    .execute();
+                    .executeInsert();
+            var lastId = builder.generatedLastKey(rs -> rs.getInt(1));
+            Assertions.assertEquals(3, lastId);
 
             System.out.println("Previous statement with modified parameters");
             builder.bind("id1", 11)

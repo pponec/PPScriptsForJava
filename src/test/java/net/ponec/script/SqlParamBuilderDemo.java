@@ -131,8 +131,8 @@ public class SqlParamBuilderDemo extends AbstractJdbcConnector {
             builder.bind("id", 12).bind("code", "E").bind("created", someDate).executeInsert();
             builder.bind("id", 13).bind("code", "F").bind("created", someDate).executeInsert();
 
-            var insertedIds = builder.generatedKeys(rs -> rs.getInt(1)).toList();
-            System.out.printf("insertedIds: %s%n", insertedIds);
+            var lastInsertedId = builder.generatedLastKey(rs -> rs.getInt(1));
+            System.out.printf("lastInsertedId: %s%n", lastInsertedId);
         }
         return result;
     }

@@ -121,7 +121,7 @@ public final class SqlExecutor {
     }
 
     /**
-     * Less than 240 lines long class to simplify work with JDBC.
+     * Less than 250 lines long class to simplify work with JDBC.
      * Original source: <a href="https://github.com/pponec/PPScriptsForJava/blob/development/src/main/java/net/ponec/script/SqlExecutor.java">GitHub</a>
      * Licence: Apache License, Version 2.0
      * @author Pavel Ponec, https://github.com/pponec
@@ -134,12 +134,13 @@ public final class SqlExecutor {
         protected String sqlTemplate = "";
         private final Map<String, ParamValue> params = new HashMap<>();
         private PreparedStatement preparedStatement = null;
+        private ResultSet resultSet = null;
 
         public SqlParamBuilder(Connection dbConnection) {
             this.dbConnection = dbConnection;
         }
 
-        /** Close an old statement (if any) and assign the new SQL template */
+        /** Sets a new SQL template and resets current parameters. Any existing resources are closed. */
         public SqlParamBuilder sql(String... sqlLines) {
             close();
             params.clear();
@@ -173,7 +174,7 @@ public final class SqlExecutor {
             }
         }
 
-        /** For INSERT operations used before calling method {@code #generatedKeysRs}. */
+        /** Executes an INSERT statement with the ability to retrieve generated keys. */
         public int executeInsert() {
             try {
                 return prepareStatement(Statement.RETURN_GENERATED_KEYS).executeUpdate();
@@ -182,23 +183,19 @@ public final class SqlExecutor {
             }
         }
 
-        /** Execute: INSERT, UPDATE, DELETE, DDL statements.
-         * The ResultSet object is automatically closed when the Statement object that generated it is closed,
-         * re-executed, or used to retrieve the next result from a sequence of multiple results. */
+        /** Internal execution of a SELECT query. */
         private ResultSet executeSelect() {
             try {
                 return prepareStatement(Statement.NO_GENERATED_KEYS).executeQuery();
-            } catch (SQLException ex) {
-                throw new SqlException(ex);
+            } catch (SQLException e) {
+                throw new SqlException(e);
             }
         }
 
-        /**
-         * Returns a Stream over the given ResultSet. Closing the Stream also closes the ResultSet.
-         * Prefer {@link #streamMap(SqlFunction)} or {@link #forEach(SqlConsumer)}.
-         * @param resultSet the ResultSet to stream over
-         */
-        private Stream<ResultSet> stream(final ResultSet resultSet) {
+        /** Creates a Stream from the ResultSet. The Stream ensures the ResultSet is closed when finished. <br/>
+         * Prefer {@link #streamMap(SqlFunction)} or {@link #forEach(SqlConsumer)}. */
+        private Stream<ResultSet> stream(final ResultSet rs) {
+            switchResultSet(rs);
             final var iterator = new Iterator<ResultSet>() {
                 @Override
                 public boolean hasNext() {
@@ -210,43 +207,46 @@ public final class SqlExecutor {
                 }
                 @Override
                 public ResultSet next() {
-                    return resultSet;
+                    return rs;
                 }
             };
-            // NOTE: The last ResultSet from a PreparedStatement is closed automatically when the statement is closed.
-            // For multiple ResultSets or other creation methods, must be closed explicitly.
             final var spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED);
-            return StreamSupport.stream(spliterator, false).onClose(() -> {
-                try {
-                    resultSet.close();
-                } catch (SQLException e) {
-                    throw new SqlException(e);
-                }
-            });
+            return StreamSupport.stream(spliterator, false).onClose(() -> switchResultSet(null));
         }
 
-        /** Iterate executed select */
-        public void forEach(SqlConsumer<ResultSet> consumer) throws SQLException  {
+        /** Safely closes the current ResultSet and starts tracking the new one. */
+        private void switchResultSet(final ResultSet rs) {
+            try (var oldResultSet = this.resultSet) {
+            } catch (SQLException e) {
+                throw new SqlException(e);
+            }
+            this.resultSet = rs;
+        }
+
+        /** Executes the query and processes each row using the provided consumer. */
+        public void forEach(SqlConsumer<ResultSet> consumer) throws SQLException {
             stream(executeSelect()).forEach(consumer);
         }
 
+        /** Executes the query and returns a Stream of mapped results. */
         public <R> Stream<R> streamMap(SqlFunction<ResultSet, ? extends R> mapper) {
             return stream(executeSelect()).map(mapper);
         }
 
-        /** The method closes a PreparedStatement object with related objects, not the database connection. */
+        /** Closes the PreparedStatement and any active ResultSet. The database connection remains open. */
         @Override
         public void close() {
-            try (AutoCloseable c2 = preparedStatement) {
+            try (var ps = preparedStatement; var rs = resultSet) {
             } catch (Exception e) {
-                throw new SqlException("Closing fails", e);
+                throw new SqlException(e, "Closing resources failed");
             } finally {
+                resultSet = null;
                 preparedStatement = null;
                 params.clear();
             }
         }
 
-        /** Build (or reuse) a PreparedStatement object with SQL arguments
+        /** Builds or reuses a PreparedStatement and binds current parameters.
          * @param autoGeneratedKeys For example: {@code Statement.RETURN_GENERATED_KEYS} */
         public PreparedStatement prepareStatement(int autoGeneratedKeys) {
             try {
@@ -261,8 +261,8 @@ public final class SqlExecutor {
                 }
                 preparedStatement = result;
                 return result;
-            } catch (SQLException ex) {
-                throw new SqlException("prepareStatement()", ex);
+            } catch (SQLException e) {
+                throw new SqlException(e, "prepareStatement()");
             }
         }
 
@@ -270,7 +270,7 @@ public final class SqlExecutor {
             try {
                 return preparedStatement != null ? preparedStatement.getGeneratedKeys() : null;
             } catch (SQLException e) {
-                throw new SqlException("generatedKeysRs()", e);
+                throw new SqlException(e, "generatedKeysRs()");
             }
         }
 
@@ -282,6 +282,14 @@ public final class SqlExecutor {
                     ? stream(generatedKeysRs).map(mapper)
                     : Stream.of();
         }
+
+        /** Method returns the last inserted key of the last INSERT statement.
+         * @throws NoSuchElementException If no key found */
+        public <R> R generatedLastKey(SqlFunction<ResultSet, ? extends R> mapper) throws NoSuchElementException {
+            return generatedKeys(mapper).reduce((first, second) -> second)
+                    .orElseThrow(() -> new NoSuchElementException("No keys"));
+        }
+
         protected String buildSql(List<ParamValue> sqlValues, boolean toLog) {
             final var result = new StringBuffer(256);
             final var matcher = SQL_MARK.matcher(sqlTemplate);
@@ -302,7 +310,7 @@ public final class SqlExecutor {
                 }
             }
             if (!toLog && !missingKeys.isEmpty()) {
-                throw new SqlException("Missing SQL parameter: " + missingKeys, null);
+                throw new SqlException(null, "Missing SQL parameter: " + missingKeys);
             }
             matcher.appendTail(result);
             return result.toString();
@@ -348,12 +356,11 @@ public final class SqlExecutor {
             void acceptResultSet(T t) throws Exception;
         }
 
-        public static final class SqlException extends RuntimeException {
-            public SqlException(Throwable cause) {
-                super(cause);
-            }
-            public SqlException(String message, Throwable cause) {
-                super(message, cause);
+        public static final class SqlException extends IllegalStateException {
+            private SqlException(Throwable cause, String... messages) {
+                super((messages.length > 0 || cause == null)
+                        ? String.join(" ", messages)
+                        : cause.getMessage(), cause);
             }
         }
     }
