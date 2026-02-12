@@ -1,4 +1,4 @@
-# 250 lines of Java code to run SQL statements
+# SqlParamBuilder: 250 lines of Java code to run SQL statements
 
 I'd like to introduce you to a Java class with less than 250 lines of code to make it easier to work with SQL queries called through the JDBC API. 
 What makes it special? 
