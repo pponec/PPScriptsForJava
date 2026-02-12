@@ -125,4 +125,4 @@ When running, be sure to connect the necessary JDBC driver.
 A link to a sample use of the `SqlParamBuilder` class [is here](../src/main/java/net/ponec/script/SqlExecutor.java).
 The class can be run using the Bash script [SqlExecutor.sh](../src/main/java/net/ponec/script/SqlExecutor.sh).
 
-For more information, see the project demonstrating mapping with the [SimpleFlatMapper framework](https://github.com/pponec/simpleflatmapper-jdbc-example/tree/main).
+For more information, see the project demonstrating mapping with the [SimpleFlatMapper framework](https://github.com/pponec/simpleflatmapper-jdbc-example/tree/main?tab=readme-ov-file#simpleflatmapper-jdbc-example).
